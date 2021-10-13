@@ -1,0 +1,3 @@
+[submodule "3rd_party/precore"]
+	path = 3rd_party/precore
+	url = git@github.com:predatorcz/precore.git
