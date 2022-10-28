@@ -61,7 +61,7 @@ es::string_view filters[]{
     {},
 };
 
-extern "C" ES_EXPORT AppInfo_s appInfo{
+static AppInfo_s appInfo{
     AppInfo_s::CONTEXT_VERSION,
     AppMode_e::EXTRACT,
     ArchiveLoadType::ALL,
@@ -71,9 +71,8 @@ extern "C" ES_EXPORT AppInfo_s appInfo{
     filters,
 };
 
-void AppInitModule() {
-  RegisterReflectedTypes_();
-  RegisterReflectedType<Filter>();
+AppInfo_s *AppInitModule() {
+  return &appInfo;
 }
 
 template <> void FByteswapper(IGHWHeader &input, bool) {

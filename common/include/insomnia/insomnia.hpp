@@ -73,7 +73,7 @@ struct IGHWTOC {
     iter.begin_ = static_cast<const C *>(static_cast<const CoreClass *>(data));
 
     if (count.ArrayType() == IGHWTOCArrayType::Buffer) {
-      iter.end_ = static_cast<const C *>(data + size);
+      iter.end_ = static_cast<const C *>(data.Get() + size);
     } else {
       if (sizeof(C) != size) {
         throw std::bad_cast{};
@@ -151,5 +151,3 @@ void CatchClasses(IGHW &main, IGHWTOCIteratorConst<C> &...classes) {
   auto dummy = [](const IGHWTOC &) {};
   CatchClassesLambda(main, dummy, classes...);
 }
-
-void IS_EXTERN RegisterReflectedTypes_();

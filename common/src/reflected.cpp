@@ -20,7 +20,6 @@
 #include "insomnia/insomnia.hpp"
 #include "pugixml.hpp"
 
-namespace {
 namespace aggregators_ {
 struct Texture {
   const char *path = nullptr;
@@ -39,7 +38,6 @@ struct Material : ::Material {
   Material(const ::Material &mat) : ::Material(mat) {}
 };
 } // namespace aggregators_
-} // namespace
 
 REFLECT(CLASS(aggregators_::Texture), //
         MEMBER(id), MEMBER(path), MEMBER(hash), MEMBER(flags), MEMBER(address),
@@ -193,9 +191,3 @@ void Material(IGHW &main, pugi::xml_node node) {
   }
 }
 } // namespace aggregators
-
-void RegisterReflectedTypes_() {
-  RegisterReflectedTypes<TextureFlagsType, TextureAddressType,
-                         TextureControl0Type, TextureControl3Type, WrapMode,
-                         MaxAnisotropy, ZComparisonFunction>();
-}

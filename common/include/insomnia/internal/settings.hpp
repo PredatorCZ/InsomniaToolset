@@ -20,11 +20,8 @@
 
 #ifdef IS_EXPORT
 #define IS_EXTERN ES_EXPORT
-#define IS_EXTERN_FN(what) ES_EXPORT_FN(what)
 #elif defined(IS_IMPORT)
 #define IS_EXTERN ES_IMPORT
-#define IS_EXTERN_FN(what) ES_IMPORT_FN(what)
 #else
 #define IS_EXTERN
-#define IS_EXTERN_FN(what) what
 #endif

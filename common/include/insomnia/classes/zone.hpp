@@ -44,7 +44,7 @@ struct ZoneMap : Texture {
 
 struct ZoneData : CoreClass {
   static const uint32 ID = 0x7240;
-  esMatrix44 transform;
+  es::Matrix44 transform;
   float unk0[4];
   int32 null;
   int32 mainDataOffset;
