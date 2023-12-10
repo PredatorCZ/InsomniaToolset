@@ -24,7 +24,8 @@ template <uint32 id_> struct ResourceLookup : CoreClass {
   uint32 offset;
   uint32 size;
 
-  bool operator==(Hash other) const { return hash == other; }
+  bool operator<(const Hash other) const { return hash < other; }
+  bool operator==(const Hash other) const { return hash == other; }
   bool operator==(uint32 other) const { return hash.part2 == other; }
 };
 

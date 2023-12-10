@@ -15,9 +15,9 @@
     along with this program.If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "datas/binreader_stream.hpp"
-#include "datas/except.hpp"
 #include "insomnia/insomnia.hpp"
+#include "spike/except.hpp"
+#include "spike/io/binreader_stream.hpp"
 #include <map>
 
 template <> void FByteswapper(Hash &input, bool) {
@@ -119,27 +119,49 @@ template <class C> void fixupper(CoreClass *data, bool way) {
   FByteswapper(*static_cast<C *>(data), way);
 }
 
+template <> void FByteswapper(Moby &input, bool) {
+  FByteswapper(input.unk00);
+  FByteswapper(input.unk01);
+  FByteswapper(input.unk10);
+  FByteswapper(input.unk11);
+  FByteswapper(input.numBones);
+  FByteswapper(input.unk13);
+  FByteswapper(input.null00);
+  FByteswapper(input.unk011);
+  FByteswapper(input.unk02);
+  FByteswapper(input.unk032);
+  FByteswapper(input.animset);
+  FByteswapper(input.null02);
+  FByteswapper(input.unk031);
+  FByteswapper(input.meshScale);
+  FByteswapper(input.unk04);
+  FByteswapper(input.unk05);
+  FByteswapper(input.unk06);
+  FByteswapper(input.moby);
+  FByteswapper(input.unk07);
+  FByteswapper(input.null01);
+}
+
 struct ClassInfo {
   void (*swap)(CoreClass *, bool);
   size_t size;
 };
 
 template <class... C> auto RegisterClasses() {
-  return std::initializer_list<std::pair<const uint32, ClassInfo>>{
-      {C::ID, {fixupper<C>, sizeof(C)}}...};
+  return std::map<uint32, ClassInfo>{{C::ID, {fixupper<C>, sizeof(C)}}...};
 }
 
-static const std::map<uint32, ClassInfo> fixups{
+static const std::map<uint32, ClassInfo> FIXUPS{
     RegisterClasses<ResourceLighting, ResourceZones, ResourceAnimsets,
                     ResourceMobys, ResourceShrubs, ResourceTies,
                     ResourceFoliages, ResourceCubemap, ResourceShaders,
                     ResourceHighmips, ResourceTextures, ResourceCinematics,
                     TextureResource, Material, Texture, ShaderResourceLookup,
                     ZoneHash, ZoneNameLookup, ZoneLightmap, ZoneShadowMap,
-                    ZoneDataLookup, ZoneData2Lookup, ZoneData, ZoneMap>(),
+                    ZoneDataLookup, ZoneData2Lookup, ZoneData, ZoneMap, Moby>(),
 };
 
-void IGHW::FromStream(BinReaderRef rd) {
+void IGHW::FromStream(BinReaderRef_e rd) {
   rd.SwapEndian(true);
   IGHWHeader hdr;
   rd.Push();
@@ -172,9 +194,9 @@ void IGHW::FromStream(BinReaderRef rd) {
   for (auto &item : *this) {
     FByteswapper(item, false);
     item.data.Fixup(buffer.data());
-    auto found = fixups.find(item.id);
+    auto found = FIXUPS.find(item.id);
 
-    if (!es::IsEnd(fixups, found)) {
+    if (!es::IsEnd(FIXUPS, found)) {
       char *start = reinterpret_cast<char *>(item.data.operator->());
       char *end = nullptr;
 

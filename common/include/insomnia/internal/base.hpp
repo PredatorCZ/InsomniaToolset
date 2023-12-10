@@ -16,10 +16,10 @@
 */
 
 #pragma once
-#include "datas/pointer.hpp"
-#include "datas/pugi_fwd.hpp"
-#include "datas/supercore.hpp"
 #include "insomnia/internal/settings.hpp"
+#include "spike/type/pointer.hpp"
+#include "spike/util/pugi_fwd.hpp"
+#include "spike/util/supercore.hpp"
 
 struct IGHW;
 
@@ -29,7 +29,14 @@ struct Hash {
   uint32 part1;
   uint32 part2;
 
-  bool operator==(Hash other) const {
+  bool operator<(const Hash other) const {
+    if (part1 == other.part1) {
+      return part2 < other.part2;
+    }
+    return part1 < other.part1;
+  }
+
+  bool operator==(const Hash other) const {
     return part1 == other.part1 && part2 == other.part2;
   }
 };

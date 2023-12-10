@@ -16,7 +16,7 @@
 */
 
 #pragma once
-#include "datas/internal/sc_architecture.hpp"
+#include "spike/util/detail/sc_architecture.hpp"
 
 #ifdef IS_EXPORT
 #define IS_EXTERN ES_EXPORT

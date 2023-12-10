@@ -15,18 +15,15 @@
     along with this program.If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "datas/app_context.hpp"
-#include "datas/binreader_stream.hpp"
-#include "datas/except.hpp"
-#include "datas/fileinfo.hpp"
-#include "datas/flags.hpp"
-#include "datas/master_printer.hpp"
-#include "datas/reflector.hpp"
-#include "formats/DDS.hpp"
-#include "formats/addr_ps3.hpp"
 #include "insomnia/insomnia.hpp"
 #include "project.h"
 #include "pugixml.hpp"
+#include "spike/app_context.hpp"
+#include "spike/except.hpp"
+#include "spike/io/binreader_stream.hpp"
+#include "spike/master_printer.hpp"
+#include "spike/reflect/reflector.hpp"
+#include "spike/type/flags.hpp"
 
 MAKE_ENUM(ENUMSCOPE(class Filter, Filter), EMEMBER(Mobys), EMEMBER(Ties),
           EMEMBER(Shrubs), EMEMBER(Foliages), EMEMBER(Zones), EMEMBER(Textures),
@@ -35,45 +32,27 @@ MAKE_ENUM(ENUMSCOPE(class Filter, Filter), EMEMBER(Mobys), EMEMBER(Ties),
 
 static struct AssetExtract : ReflectorBase<AssetExtract> {
   bool convertShaders = true;
-  bool legacyDDS = true;
-  bool forceLegacyDDS = false;
-  bool largestMipmap = true;
   es::Flags<Filter> extractFilter{0xffffu};
 } settings;
 
-REFLECT(
-    CLASS(AssetExtract),
-    MEMBERNAME(convertShaders, "convert-shaders", "s",
-               ReflDesc{"Convert shaders into XML format."}),
-    MEMBERNAME(legacyDDS, "legacy-dds", "l",
-               ReflDesc{
-                   "Tries to convert texture into legacy (DX9) DDS format."}),
-    MEMBERNAME(forceLegacyDDS, "force-legacy-dds", "f",
-               ReflDesc{"Will try to convert some matching formats from DX10 "
-                        "to DX9, for example: RG88 to AL88."}),
-    MEMBERNAME(largestMipmap, "largest-mipmap-only", "m",
-               ReflDesc{"Will try to extract only highest mipmap."}),
-    MEMBERNAME(extractFilter, "extract-filter", "e",
-               ReflDesc{"Select groups that should be extracted."}), );
+REFLECT(CLASS(AssetExtract),
+        MEMBERNAME(convertShaders, "convert-shaders", "s",
+                   ReflDesc{"Convert shaders into XML format."}),
+        MEMBERNAME(extractFilter, "extract-filter", "e",
+                   ReflDesc{"Select groups that should be extracted."}), );
 
-es::string_view filters[]{
-    "$assetlookup.dat",
-    {},
+std::string_view filters[]{
+    "^assetlookup.dat$",
 };
 
 static AppInfo_s appInfo{
-    AppInfo_s::CONTEXT_VERSION,
-    AppMode_e::EXTRACT,
-    ArchiveLoadType::ALL,
-    AssetExtract_DESC " v" AssetExtract_VERSION ", " AssetExtract_COPYRIGHT
-                      "Lukas Cone",
-    reinterpret_cast<ReflectorFriend *>(&settings),
-    filters,
+    .header = AssetExtract_DESC " v" AssetExtract_VERSION
+                                ", " AssetExtract_COPYRIGHT "Lukas Cone",
+    .settings = reinterpret_cast<ReflectorFriend *>(&settings),
+    .filters = filters,
 };
 
-AppInfo_s *AppInitModule() {
-  return &appInfo;
-}
+AppInfo_s *AppInitModule() { return &appInfo; }
 
 template <> void FByteswapper(IGHWHeader &input, bool) {
   FByteswapper(input.id);
@@ -86,7 +65,7 @@ template <> void FByteswapper(IGHWTOC &input, bool) {
   FByteswapper(input.data);
 }
 
-bool IGHWSeekClass(BinReaderRef rd, uint32 classId) {
+bool IGHWSeekClass(BinReaderRef_e rd, uint32 classId) {
   rd.SwapEndian(true);
   IGHWHeader hdr;
   rd.Read(hdr);
@@ -127,14 +106,14 @@ struct XMLContextWritter : pugi::xml_writer {
   AppExtractContext *ctx;
 };
 
-void ExtractShaders(AppExtractContext *ctx, const IGHWTOC &segment,
+void ExtractShaders(AppContext *ctx, const IGHWTOC &segment,
                     TextureRegistry &reg) {
-  auto stream = ctx->ctx->RequestFile("shaders.dat");
+  auto stream = ctx->RequestFile("shaders.dat");
   IGHW main;
 
   for (auto &item : segment.Iter<ResourceShaders>()) {
     const char *shaderPath = nullptr;
-    BinReaderRef rd(*stream.Get());
+    BinReaderRef_e rd(*stream.Get());
     rd.SetRelativeOrigin(item.offset);
     main.FromStream(rd);
     IGHWTOCIteratorConst<Texture> textures;
@@ -176,25 +155,27 @@ void ExtractShaders(AppExtractContext *ctx, const IGHWTOC &segment,
       }
     }
 
+    auto ectx = ctx->ExtractContext();
+
     if (shaderPath) {
       std::string path = "shaders/";
       path.append(shaderPath).append(".shd");
       if (settings.convertShaders) {
         path.append(".xml");
       }
-      ctx->NewFile(path);
+      ectx->NewFile(path);
     } else {
       char tmpBuff[0x40];
       snprintf(tmpBuff, sizeof(tmpBuff),
                "shaders/%.8" PRIX32 ".%.8" PRIX32 ".shd%s", item.hash.part1,
                item.hash.part2, settings.convertShaders ? ".xml" : "");
-      ctx->NewFile(tmpBuff);
+      ectx->NewFile(tmpBuff);
     }
 
     if (settings.convertShaders) {
       pugi::xml_document doc;
       aggregators::Material(main, doc);
-      XMLContextWritter xmlwr(ctx);
+      XMLContextWritter xmlwr(ectx);
       doc.save(xmlwr);
     } else {
       char uniBuffer[0x80000]{};
@@ -204,12 +185,12 @@ void ExtractShaders(AppExtractContext *ctx, const IGHWTOC &segment,
 
         for (size_t i = 0; i < numBlocks; i++) {
           instream->read(uniBuffer, sizeof(uniBuffer));
-          ctx->SendData({uniBuffer, sizeof(uniBuffer)});
+          ectx->SendData({uniBuffer, sizeof(uniBuffer)});
         }
 
         if (restBytes) {
           instream->read(uniBuffer, restBytes);
-          ctx->SendData({uniBuffer, restBytes});
+          ectx->SendData({uniBuffer, restBytes});
         }
       };
 
@@ -219,153 +200,83 @@ void ExtractShaders(AppExtractContext *ctx, const IGHWTOC &segment,
   }
 }
 
-void ExtractTexture(AppExtractContext *ctx, const char *path,
+void ExtractTexture(AppExtractContext *ctx, std::string path,
                     const Texture &info, bool hasHighMipData,
                     AppContextStream &highMipStream,
                     AppContextStream &textureStream,
                     const ResourceHighmips *foundHighMipData,
                     const ResourceTextures *foundTextureData) {
-  char uniBuffer[0x80000]{};
-  thread_local static std::string tmpBuffer;
-  thread_local static std::string outBuffer;
-  DDS main;
-  main = DDSFormat_DX10;
-  main.width = info.width;
-  main.height = info.height;
-  main.depth = info.control3.Get<TextureControl3::depth>();
-  main.pitchOrLinearSize = info.control3.Get<TextureControl3::pitch>();
-  main.NumMipmaps(settings.largestMipmap ? 1 : info.numMips);
+  std::string tmpBuffer;
 
-  switch (info.format) {
-  case 0x85:
-    main.dxgiFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
-    break;
-  case 0x81:
-    main.dxgiFormat = DXGI_FORMAT_R8_UNORM;
-    break;
-  case 0x86:
-  case 0xa6: // srgb???
-    main.dxgiFormat = DXGI_FORMAT_BC1_UNORM;
-    break;
-  case 0x88:
-  case 0xa8:
-    main.dxgiFormat = DXGI_FORMAT_BC3_UNORM;
-    break;
-  case 0x87:
-  case 0xa7:
-    main.dxgiFormat = DXGI_FORMAT_BC2_UNORM;
-    break;
-  case 0x84:
-    main.dxgiFormat = DXGI_FORMAT_B5G6R5_UNORM;
-    break;
-  case 0x83:
-    main.dxgiFormat = DXGI_FORMAT_B4G4R4A4_UNORM;
-    break;
-  case 0x8b:
-    main.dxgiFormat = DXGI_FORMAT_R8G8_UNORM;
-    break;
-  default:
-    break;
-  }
+  textureStream->seekg(foundTextureData->offset);
+  if (hasHighMipData) {
+    tmpBuffer.resize(foundHighMipData->size + foundTextureData->size);
+    highMipStream->seekg(foundHighMipData->offset);
+    highMipStream->read(tmpBuffer.data(), foundHighMipData->size);
 
-  main.ComputeBPP();
-
-  bool mustRepack = !IsBC(main.dxgiFormat);
-  const uint32 sizetoWrite =
-      !settings.legacyDDS || main.ToLegacy(settings.forceLegacyDDS)
-          ? main.DDS_SIZE
-          : main.LEGACY_SIZE;
-  if (settings.legacyDDS && sizetoWrite == main.DDS_SIZE) {
-    printwarning("Couldn't convert " << path << " to legacy.")
-  }
-
-  ctx->SendData({reinterpret_cast<const char *>(&main), sizetoWrite});
-
-  auto restream = [&](auto instream, size_t size) {
-    const size_t numBlocks = size / sizeof(uniBuffer);
-    const size_t restBytes = size % sizeof(uniBuffer);
-
-    for (size_t i = 0; i < numBlocks; i++) {
-      instream->read(uniBuffer, sizeof(uniBuffer));
-      ctx->SendData({uniBuffer, sizeof(uniBuffer)});
-    }
-
-    if (restBytes) {
-      instream->read(uniBuffer, restBytes);
-      ctx->SendData({uniBuffer, restBytes});
-    }
-  };
-
-  auto repack = [&](auto instream, size_t size, size_t mip = 0) {
-    char *repackBuffer = uniBuffer;
-    if (size > sizeof(uniBuffer)) {
-      tmpBuffer.resize(size);
-      repackBuffer = &tmpBuffer[0];
-    }
-
-    outBuffer.resize(size);
-    instream->read(repackBuffer, size);
-
-    const size_t width = main.width >> mip;
-    const size_t height = main.height >> mip;
-    MortonSettings mortonSettings(width, height);
-    const size_t stride = main.bpp / 8;
-
-    for (size_t p = 0; p < size; p += stride) {
-      const size_t coord = p / stride;
-      const size_t x = coord % width;
-      const size_t y = coord / width;
-      memcpy(&outBuffer[p],
-             repackBuffer + MortonAddr(x, y, mortonSettings) * stride, stride);
-    }
-
-    ctx->SendData({outBuffer.data(), size});
-  };
-
-  DDS::Mips mips{};
-  main.ComputeBufferSize(mips);
-
-  if (settings.largestMipmap) {
-    const size_t mipMapSize =
-        mips.sizes[hasHighMipData || !foundHighMipData ? 0 : 1];
-    auto &stream = hasHighMipData ? highMipStream : textureStream;
-    stream->seekg(hasHighMipData ? foundHighMipData->offset
-                                 : foundTextureData->offset);
-    if (mustRepack) {
-      repack(stream.Get(), mipMapSize);
-    } else {
-      restream(stream.Get(), mipMapSize);
-    }
+    textureStream->read(tmpBuffer.data() + foundHighMipData->size,
+                        foundTextureData->size);
   } else {
-    if (hasHighMipData) {
-      highMipStream->seekg(foundHighMipData->offset);
-
-      if (mustRepack) {
-        repack(highMipStream.Get(), foundHighMipData->size);
-      } else {
-        restream(highMipStream.Get(), foundHighMipData->size);
-      }
-    }
-
-    if (mustRepack) {
-      const size_t offsetTweak = hasHighMipData ? mips.sizes[0] : 0;
-      for (size_t mip = hasHighMipData; mip < main.mipMapCount; mip++) {
-        textureStream->seekg(foundTextureData->offset + mips.offsets[mip] -
-                             offsetTweak);
-        repack(textureStream.Get(), mips.sizes[mip], mip);
-      }
-    } else {
-      textureStream->seekg(foundTextureData->offset);
-      restream(textureStream.Get(), foundTextureData->size);
-    }
+    tmpBuffer.resize(foundTextureData->size);
+    textureStream->read(tmpBuffer.data(), foundTextureData->size);
   }
+
+  TexelTile tile = TexelTile::Linear;
+
+  auto GetFormat = [&] {
+    switch (info.format) {
+    case 0x85:
+      tile = TexelTile::Morton;
+      return TexelInputFormatType::RGBA8;
+    case 0x81:
+      return TexelInputFormatType::R8;
+    case 0x86:
+    case 0xa6: // srgb???
+      return TexelInputFormatType::BC1;
+    case 0x88:
+    case 0xa8:
+      return TexelInputFormatType::BC3;
+    case 0x87:
+    case 0xa7:
+      return TexelInputFormatType::BC2;
+    case 0x84:
+      tile = TexelTile::Morton;
+      return TexelInputFormatType::R5G6B5;
+    case 0x83:
+      tile = TexelTile::Morton;
+      return TexelInputFormatType::RGBA4;
+    case 0x8b:
+      tile = TexelTile::Morton;
+      return TexelInputFormatType::RG8;
+    default:
+      break;
+    }
+
+    return TexelInputFormatType::INVALID;
+  };
+
+  NewTexelContextCreate tctx{
+      .width = info.width,
+      .height = info.height,
+      .baseFormat =
+          {
+              .type = GetFormat(),
+              .tile = tile,
+          },
+      .depth = std::max(uint16(1),
+                        uint16(info.control3.Get<TextureControl3::depth>())),
+      .numMipmaps = uint8(info.numMips),
+      .data = tmpBuffer.data(),
+  };
+
+  ctx->NewImage(path, tctx);
 }
 
-void ExtractTextures(AppExtractContext *ctx, const TextureRegistry &reg,
+void ExtractTextures(AppContext *ctx, const TextureRegistry &reg,
                      IGHWTOCIteratorConst<ResourceTextures> textures,
                      IGHWTOCIteratorConst<ResourceHighmips> highMips) {
-  auto textureStream = ctx->ctx->RequestFile("textures.dat");
-  auto highMipStream = ctx->ctx->RequestFile("highmips.dat");
+  auto textureStream = ctx->RequestFile("textures.dat");
+  auto highMipStream = ctx->RequestFile("highmips.dat");
   std::map<std::string, bool> duplicates;
 
   for (auto &r : reg) {
@@ -377,6 +288,8 @@ void ExtractTextures(AppExtractContext *ctx, const TextureRegistry &reg,
       found->second = true;
     }
   }
+
+  auto ectx = ctx->ExtractContext();
 
   for (auto &r : reg) {
     auto foundTextureData =
@@ -395,20 +308,17 @@ void ExtractTextures(AppExtractContext *ctx, const TextureRegistry &reg,
       continue;
     }
 
-    ctx->NewFile("textures/" + r.second.path + ".dds");
-    const auto &info = r.second.data;
-    ExtractTexture(ctx, r.second.path.data(), info, hasHighMipData,
-                   highMipStream, textureStream, foundHighMipData,
-                   foundTextureData);
+    ExtractTexture(ectx, "textures/" + r.second.path, r.second.data,
+                   hasHighMipData, highMipStream, textureStream,
+                   foundHighMipData, foundTextureData);
   }
 }
 
-void ExtractZones(AppExtractContext *ctx,
+void ExtractZones(AppContext *ctx,
                   IGHWTOCIteratorConst<ResourceLighting> ligtmaps,
                   IGHWTOCIteratorConst<ResourceZones> zones) {
-  AFileInfo workingfolder(ctx->ctx->workingFile);
-  AppContextStream regionStream =
-      std::move(ctx->ctx->FindFile(workingfolder.GetFolder(), "$region.dat"));
+  AppContextStream regionStream = std::move(
+      ctx->FindFile(std::string(ctx->workingFile.GetFolder()), "^region.dat$"));
   IGHW region;
   region.FromStream(*regionStream.Get());
   IGHWTOCIteratorConst<ZoneHash> zoneHashes;
@@ -416,11 +326,12 @@ void ExtractZones(AppExtractContext *ctx,
 
   CatchClasses(region, zoneHashes, zoneNames);
 
-  auto streamZones = ctx->ctx->RequestFile("zones.dat");
-  auto streamLightMaps = ctx->ctx->RequestFile("lighting.dat");
-  BinReaderRef zonesData(*streamZones.Get());
+  auto streamZones = ctx->RequestFile("zones.dat");
+  auto streamLightMaps = ctx->RequestFile("lighting.dat");
+  BinReaderRef_e zonesData(*streamZones.Get());
   char uniBuffer[0x80000]{};
-  size_t curZoneIndex = 0;
+
+  auto ectx = ctx->ExtractContext();
 
   for (auto &item : zones) {
     auto foundZoneHash =
@@ -436,7 +347,7 @@ void ExtractZones(AppExtractContext *ctx,
           zoneNames.at(std::distance(zoneHashes.begin(), foundZoneHash)).name);
     }
     std::string fileName = workingPath + ".zone.irb";
-    ctx->NewFile(fileName);
+    ectx->NewFile(fileName);
 
     auto restream = [&](auto instream, size_t size) {
       const size_t numBlocks = size / sizeof(uniBuffer);
@@ -444,12 +355,12 @@ void ExtractZones(AppExtractContext *ctx,
 
       for (size_t i = 0; i < numBlocks; i++) {
         instream->read(uniBuffer, sizeof(uniBuffer));
-        ctx->SendData({uniBuffer, sizeof(uniBuffer)});
+        ectx->SendData({uniBuffer, sizeof(uniBuffer)});
       }
 
       if (restBytes) {
         instream->read(uniBuffer, restBytes);
-        ctx->SendData({uniBuffer, restBytes});
+        ectx->SendData({uniBuffer, restBytes});
       }
     };
 
@@ -477,18 +388,14 @@ void ExtractZones(AppExtractContext *ctx,
 
     for (auto &map : zoneMaps) {
       char textureName[0x40];
-      snprintf(textureName, sizeof(textureName), "/%.8" PRIX32 ".dds",
+      snprintf(textureName, sizeof(textureName), "/%.8" PRIX32,
                zoneMapRes.at(curZoneMap++).hash);
       std::string path = workingPath + textureName;
-      ctx->NewFile(path);
       ResourceTextures res;
       res.offset = map.offset + foundLM->offset;
-      res.size = es::IsEnd(ligtmaps, ligtmaps.begin() + curZoneIndex + 1)
-                     ? foundLM->size
-                     : ligtmaps.at(curZoneIndex + 1).offset;
-      res.size -= map.offset;
-      ExtractTexture(ctx, textureName, map, false, streamLightMaps,
-                     streamLightMaps, nullptr, &res);
+      res.size = foundLM->size - map.offset,
+      ExtractTexture(ectx, path, map, false, streamLightMaps, streamLightMaps,
+                     nullptr, &res);
     }
 
     for (auto &zone0 : zoneData) {
@@ -503,39 +410,51 @@ void ExtractZones(AppExtractContext *ctx,
         auto &lm0 = zoneLightmaps.at(zone0.lightMapId);
         std::string path =
             ((workingPath + "/lightmaps/") + textureName) + ".dds";
-        ctx->NewFile(path);
         ResourceTextures res;
         res.offset = lm0.offset + foundLM->offset;
-        res.size = es::IsEnd(ligtmaps, ligtmaps.begin() + curZoneIndex + 1)
-                       ? foundLM->size
-                       : ligtmaps.at(curZoneIndex + 1).offset;
-        res.size -= lm0.offset;
-        ExtractTexture(ctx, textureName, lm0, false, streamLightMaps,
-                       streamLightMaps, nullptr, &res);
+        res.size = foundLM->size - lm0.offset;
+        ExtractTexture(ectx, path, lm0, false, streamLightMaps, streamLightMaps,
+                       nullptr, &res);
       }
 
       {
         auto &lm0 = zoneShadowmaps.at(zone0.lightMapId);
         std::string path =
             ((workingPath + "/shadowmaps/") + textureName) + ".dds";
-        ctx->NewFile(path);
         ResourceTextures res;
         res.offset = lm0.offset + foundLM->offset;
-        res.size = es::IsEnd(ligtmaps, ligtmaps.begin() + curZoneIndex + 1)
-                       ? foundLM->size
-                       : ligtmaps.at(curZoneIndex + 1).offset;
-        res.size -= lm0.offset;
-        ExtractTexture(ctx, textureName, lm0, false, streamLightMaps,
-                       streamLightMaps, nullptr, &res);
+        res.size = foundLM->size - lm0.offset;
+        ExtractTexture(ectx, path, lm0, false, streamLightMaps, streamLightMaps,
+                       nullptr, &res);
       }
     }
   }
 }
 
-void AppExtractFile(std::istream &stream, AppExtractContext *ctx) {
-  BinReaderRef rd(stream);
-  IGHW main;
-  main.FromStream(rd);
+void ExtractAnimSets(AppContext *ctx, IGHWTOCIteratorConst<ResourceMobys> mobys,
+                     IGHWTOCIteratorConst<ResourceAnimsets> animsets) {
+  std::map<Hash, std::vector<std::string>> registry;
+
+  {
+    auto stream = ctx->RequestFile("mobys.dat");
+
+    for (auto &moby : mobys) {
+      BinReaderRef_e subRd(*stream.Get());
+      subRd.SetRelativeOrigin(moby.offset);
+      IGHW item;
+      item.FromStream(subRd);
+      IGHWTOCIteratorConst<Moby> model;
+
+      CatchClasses(item, model);
+      const Hash animHash = model.at(0).animset;
+      if (animHash != Hash{}) {
+        registry[animHash].emplace_back(model.at(0).selfPath);
+      }
+    }
+  }
+
+  auto stream = ctx->RequestFile("animsets.dat");
+  auto ectx = ctx->ExtractContext();
   char uniBuffer[0x80000]{};
 
   auto restream = [&](auto instream, size_t size) {
@@ -544,12 +463,56 @@ void AppExtractFile(std::istream &stream, AppExtractContext *ctx) {
 
     for (size_t i = 0; i < numBlocks; i++) {
       instream->read(uniBuffer, sizeof(uniBuffer));
-      ctx->SendData({uniBuffer, sizeof(uniBuffer)});
+      ectx->SendData({uniBuffer, sizeof(uniBuffer)});
     }
 
     if (restBytes) {
       instream->read(uniBuffer, restBytes);
-      ctx->SendData({uniBuffer, restBytes});
+      ectx->SendData({uniBuffer, restBytes});
+    }
+  };
+
+  for (auto &set : animsets) {
+    if (auto found = registry.find(set.hash); found != registry.end()) {
+      for (auto &p : found->second) {
+        AFileInfo setPath(p);
+        std::string animName(
+            AFileInfo(setPath.GetFullPathNoExt()).GetFullPathNoExt());
+        animName.append(".animset.irb");
+        ectx->NewFile(animName);
+        stream->seekg(set.offset);
+        restream(stream.Get(), set.size);
+      }
+    } else {
+      char tmpBuff[0x40];
+      snprintf(tmpBuff, sizeof(tmpBuff), "%s/%.8" PRIX32 ".%.8" PRIX32 ".irb",
+               "animsets", set.hash.part1, set.hash.part2);
+      ectx->NewFile(tmpBuff);
+      stream->seekg(set.offset);
+      restream(stream.Get(), set.size);
+    }
+  }
+}
+
+void AppProcessFile(AppContext *ctx) {
+  BinReaderRef_e rd(ctx->GetStream());
+  IGHW main;
+  main.FromStream(rd);
+  char uniBuffer[0x80000]{};
+  auto ectx = ctx->ExtractContext();
+
+  auto restream = [&](auto instream, size_t size) {
+    const size_t numBlocks = size / sizeof(uniBuffer);
+    const size_t restBytes = size % sizeof(uniBuffer);
+
+    for (size_t i = 0; i < numBlocks; i++) {
+      instream->read(uniBuffer, sizeof(uniBuffer));
+      ectx->SendData({uniBuffer, sizeof(uniBuffer)});
+    }
+
+    if (restBytes) {
+      instream->read(uniBuffer, restBytes);
+      ectx->SendData({uniBuffer, restBytes});
     }
   };
 
@@ -558,23 +521,25 @@ void AppExtractFile(std::istream &stream, AppExtractContext *ctx) {
   IGHWTOCIteratorConst<ResourceHighmips> highMips;
   IGHWTOCIteratorConst<ResourceZones> zones;
   IGHWTOCIteratorConst<ResourceLighting> lightmaps;
+  IGHWTOCIteratorConst<ResourceAnimsets> animsets;
+  IGHWTOCIteratorConst<ResourceMobys> mobys;
 
   auto ExtractWithLookup = [&](auto lookupId, auto iter, auto name) {
     std::string reqName = name + std::string(".dat");
-    auto stream = ctx->ctx->RequestFile(reqName);
+    auto stream = ctx->RequestFile(reqName);
 
     for (auto &subItem : iter) {
-      BinReaderRef subRd(*stream.Get());
+      BinReaderRef_e subRd(*stream.Get());
       subRd.SetRelativeOrigin(subItem.offset);
       if (IGHWSeekClass(subRd, lookupId)) {
         std::string fileName;
         subRd.ReadString(fileName);
-        ctx->NewFile(fileName);
+        ectx->NewFile(fileName);
       } else {
         char tmpBuff[0x40];
         snprintf(tmpBuff, sizeof(tmpBuff), "%s/%.8" PRIX32 ".%.8" PRIX32 ".irb",
                  name, subItem.hash.part1, subItem.hash.part2);
-        ctx->NewFile(tmpBuff);
+        ectx->NewFile(tmpBuff);
       }
 
       stream->seekg(subItem.offset);
@@ -584,13 +549,13 @@ void AppExtractFile(std::istream &stream, AppExtractContext *ctx) {
 
   auto ExtractSet = [&](auto iter, auto name) {
     std::string reqName = name + std::string(".dat");
-    auto stream = ctx->ctx->RequestFile(reqName);
+    auto stream = ctx->RequestFile(reqName);
 
     for (auto &subItem : iter) {
       char tmpBuff[0x40];
       snprintf(tmpBuff, sizeof(tmpBuff), "%s/%.8" PRIX32 ".%.8" PRIX32 ".irb",
                name, subItem.hash.part1, subItem.hash.part2);
-      ctx->NewFile(tmpBuff);
+      ectx->NewFile(tmpBuff);
       stream->seekg(subItem.offset);
       restream(stream.Get(), subItem.size);
     }
@@ -599,9 +564,9 @@ void AppExtractFile(std::istream &stream, AppExtractContext *ctx) {
   auto ExtractCommon = [&](const IGHWTOC &item) {
     switch (item.id) {
     case ResourceMobys::ID:
+      mobys = item.Iter<ResourceMobys>();
       if (settings.extractFilter[Filter::Mobys]) {
-        ExtractWithLookup(ResourceMobyPathLookupId, item.Iter<ResourceMobys>(),
-                          "mobys");
+        ExtractWithLookup(ResourceMobyPathLookupId, mobys, "mobys");
       }
       break;
     case ResourceTies::ID:
@@ -619,12 +584,6 @@ void AppExtractFile(std::istream &stream, AppExtractContext *ctx) {
       if (settings.extractFilter[Filter::Cinematics]) {
         ExtractWithLookup(ResourceCinematicPathLookupId,
                           item.Iter<ResourceCinematics>(), "cinematics");
-      }
-      break;
-
-    case ResourceAnimsets::ID:
-      if (settings.extractFilter[Filter::Animsets]) {
-        ExtractSet(item.Iter<ResourceAnimsets>(), "animsets");
       }
       break;
 
@@ -651,9 +610,12 @@ void AppExtractFile(std::istream &stream, AppExtractContext *ctx) {
     }
   };
 
-  CatchClassesLambda(main, ExtractCommon, textures, highMips, zones, lightmaps);
+  CatchClassesLambda(main, ExtractCommon, textures, highMips, zones, lightmaps,
+                     animsets);
 
-  // ExtractSet(lightmaps, "lighting");
+  if (settings.extractFilter[Filter::Animsets]) {
+    ExtractAnimSets(ctx, mobys, animsets);
+  }
 
   if (settings.extractFilter[Filter::Textures]) {
     ExtractTextures(ctx, textureRegistry, textures, highMips);

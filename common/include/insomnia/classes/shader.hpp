@@ -17,9 +17,9 @@
 */
 
 #pragma once
-#include "datas/bitfield.hpp"
-#include "datas/vectors_simd.hpp"
 #include "insomnia/internal/base.hpp"
+#include "spike/type/bitfield.hpp"
+#include "spike/type/vectors_simd.hpp"
 
 struct TextureResource : CoreClass {
   static constexpr uint32 ID = 0x5a00;

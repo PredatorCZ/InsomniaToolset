@@ -22,7 +22,8 @@ struct ZoneHash : CoreClass {
   static constexpr uint32 ID = 0x1C010;
   Hash hash;
 
-  bool operator==(Hash other) const { return hash == other; }
+  bool operator<(const Hash other) const { return hash < other; }
+  bool operator==(const Hash other) const { return hash == other; }
 };
 
 struct ZoneNameLookup : CoreClass {

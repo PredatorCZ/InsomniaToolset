@@ -1,23 +1,21 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.12)
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  message(FATAL_ERROR "X86 architecture is not supported!")
-endif()
+set(CMAKE_CXX_STANDARD 23)
+project(InsomniaToolset)
 
-set(CMAKE_CXX_STANDARD 20)
-add_compile_options(-Wall -Wextra)
-set(BUILD_SHARED_LIBS ON)
-set(NO_OBJECTS TRUE)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-ignored-qualifiers")
+
+option(CLI "" ON)
+#option(GLTF "" ON)
+set(EXPOSE_SYMBOLS spike;pugixml)
 
 set(TPD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party)
-add_subdirectory(${TPD_PATH}/precore)
-include(targetex)
+
+add_subdirectory(${TPD_PATH}/spike)
+include(version)
+toolset_version()
+
+set_target_properties(spike_cli PROPERTIES OUTPUT_NAME insomnia_toolset)
+
 add_subdirectory(common)
-
-project(InsomniaToolset VERSION 1.0)
-add_subdirectory(${TPD_PATH}/precore/spike
-                 ${CMAKE_CURRENT_BINARY_DIR}/spike)
-# add_subdirectory(${TPD_PATH}/gltf)
-set_target_properties(spike PROPERTIES OUTPUT_NAME insomnia_toolset)
-
 add_spike_subdir(extract)

@@ -15,8 +15,8 @@
     along with this program.If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "datas/reflector.hpp"
-#include "datas/reflector_xml.hpp"
+#include "spike/reflect/reflector.hpp"
+#include "spike/reflect/reflector_xml.hpp"
 #include "insomnia/insomnia.hpp"
 #include "pugixml.hpp"
 

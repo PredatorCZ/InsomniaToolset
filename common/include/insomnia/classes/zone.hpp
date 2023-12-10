@@ -16,7 +16,7 @@
 */
 
 #pragma once
-#include "datas/matrix44.hpp"
+#include "spike/type/matrix44.hpp"
 #include "shader.hpp"
 
 struct ZoneLightmap : Texture {

@@ -9,7 +9,8 @@ build_target(
   src/serialize.cpp
   src/reflected.cpp
   LINKS
-  precore
+  spike-interface
+  pugixml-interface
   NO_VERINFO
   NO_PROJECT_H)
 

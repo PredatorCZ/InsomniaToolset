@@ -19,9 +19,10 @@
 #include "classes/region.hpp"
 #include "classes/resource.hpp"
 #include "classes/zone.hpp"
-#include "datas/bincore_fwd.hpp"
-#include "datas/bitfield.hpp"
+#include "classes/moby.hpp"
 #include "internal/settings.hpp"
+#include "spike/io/bincore_fwd.hpp"
+#include "spike/type/bitfield.hpp"
 
 enum class IGHWTOCArrayType {
   Buffer,
@@ -100,7 +101,7 @@ struct IGHWHeader {
 };
 
 struct IGHW {
-  void IS_EXTERN FromStream(BinReaderRef rd);
+  void IS_EXTERN FromStream(BinReaderRef_e rd);
   auto Header() const {
     return reinterpret_cast<const IGHWHeader *>(buffer.data());
   }
@@ -125,7 +126,7 @@ private:
 
 template <class... C, class CB>
 void CatchClassesLambda(IGHW &main, CB &&callback,
-                  IGHWTOCIteratorConst<C> &...classes) {
+                        IGHWTOCIteratorConst<C> &...classes) {
   bool catched = false;
   auto CatchClass = [&](const IGHWTOC &toc, auto &item) {
     using type = typename std::remove_reference_t<decltype(item)>::value_type;
