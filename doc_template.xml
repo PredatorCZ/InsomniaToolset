@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<toolset_description># Insomnia
+
+Insomnia is a collection of modding tools and research for Insomniacs 7th gen engine for PS3 platform
+
+This toolset runs on Spike foundation.
+
+Head to this **[Wiki](https://github.com/PredatorCZ/Spike/wiki/Spike)** for more information on how to effectively use it.
+</toolset_description>
+
+<extract_assets name="Extract Assets">Extracts packed assets, converts textures.
+In addition, converts mobys and ties into GLTF format.</extract_assets>
+
+<extract_effect name="Extract Effect">Extracts and converts textures from `vfx_system_header.dat`.</extract_effect>
+
+<extract_psarc name="Extract PSARC">Extracts psarc archives.</extract_psarc>
+
+<toolset_footer>## [Latest Release](https://github.com/PredatorCZ/InsomniaToolset/releases)
+
+## License
+
+This toolset is available under GPL v3 license. (See LICENSE)\
+This toolset uses following libraries:
+
+- Spike, Copyright (c) 2016-2024 Lukas Cone (Apache 2)
+</toolset_footer>
