@@ -13,7 +13,7 @@ build_target(
   extract_effect.cpp
   INCLUDES
   LINKS
-  insomnia
+  insomnia-interface
   AUTHOR
   "Lukas Cone"
   DESCR

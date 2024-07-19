@@ -14,7 +14,7 @@ build_target(
   gltf.cpp
   LINKS
   gltf-interface
-  insomnia
+  insomnia-interface
   AUTHOR
   "Lukas Cone"
   DESCR
