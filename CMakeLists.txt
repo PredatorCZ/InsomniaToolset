@@ -19,6 +19,7 @@ set_target_properties(spike_cli PROPERTIES OUTPUT_NAME insomnia_toolset)
 
 add_subdirectory(common)
 add_spike_subdir(extract)
+add_spike_subdir(effect)
 
 set(TPD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/fragmented/3rd_party)
 add_spike_subdir(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/fragmented/psarc)

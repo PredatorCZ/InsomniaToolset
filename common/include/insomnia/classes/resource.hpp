@@ -46,3 +46,18 @@ static constexpr uint32 ResourceMobyPathLookupId = 0xd200;
 static constexpr uint32 ResourceTiePathLookupId = 0x3410;
 static constexpr uint32 ResourceShrubPathLookupId = 0xb700;
 static constexpr uint32 ResourceCinematicPathLookupId = 0x17d00;
+
+struct EffectTextureBuffer : CoreClass {
+  static constexpr uint32 ID = 0x5300;
+  char data;
+};
+
+struct VertexBuffer : CoreClass {
+  static constexpr uint32 ID = 0xe200;
+  char data;
+};
+
+struct IndexBuffer : CoreClass {
+  static constexpr uint32 ID = 0xe100;
+  uint16 data;
+};
