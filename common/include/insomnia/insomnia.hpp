@@ -16,13 +16,15 @@
 */
 
 #pragma once
+#include "classes/moby.hpp"
 #include "classes/region.hpp"
 #include "classes/resource.hpp"
+#include "classes/tie.hpp"
 #include "classes/zone.hpp"
-#include "classes/moby.hpp"
 #include "internal/settings.hpp"
 #include "spike/io/bincore_fwd.hpp"
 #include "spike/type/bitfield.hpp"
+#include <typeinfo>
 
 enum class IGHWTOCArrayType {
   Buffer,

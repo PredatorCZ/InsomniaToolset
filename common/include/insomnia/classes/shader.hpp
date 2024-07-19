@@ -135,13 +135,18 @@ struct Texture : CoreClass {
   uint32 borderColor;
 };
 
-struct ShaderResourceLookup : CoreClass {
+struct ShaderResource : CoreClass {
   static constexpr uint32 ID = 0x5d00;
   Hash hash;
   es::PointerX86<char> lookupPath;
   uint32 null;
   uint32 mapHashes[4];
   es::PointerX86<char> mapLookupPaths[4];
+};
+
+struct ShaderResourceLookup : CoreClass {
+  static constexpr uint32 ID = 0x5600;
+  Hash hash;
 };
 
 namespace aggregators {

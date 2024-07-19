@@ -1,15 +1,19 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(AssetExtract VERSION 1.0)
+project(AssetExtract)
 
 build_target(
   NAME
-  extract
+  extract_assets
   TYPE
   ESMODULE
+  VERSION
+  1
   SOURCES
   extract.cpp
+  gltf.cpp
   LINKS
+  gltf-interface
   insomnia
   AUTHOR
   "Lukas Cone"

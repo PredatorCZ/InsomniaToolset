@@ -75,8 +75,12 @@ template <> void FByteswapper(Texture &input, bool way) {
   FByteswapper(input.width);
 }
 
-template <> void FByteswapper(ShaderResourceLookup &input, bool) {
+template <> void FByteswapper(ShaderResource &input, bool) {
   FByteswapper(input.mapHashes);
+  FByteswapper(input.hash);
+}
+
+template <> void FByteswapper(ShaderResourceLookup &input, bool) {
   FByteswapper(input.hash);
 }
 
@@ -119,10 +123,53 @@ template <class C> void fixupper(CoreClass *data, bool way) {
   FByteswapper(*static_cast<C *>(data), way);
 }
 
+template <> void FByteswapper(Bone &input, bool) {
+  FByteswapper(input.unk);
+  FByteswapper(input.parentIndex);
+  FByteswapper(input.child);
+  FByteswapper(input.parentChild);
+}
+
+template <> void FByteswapper(Skeleton &input, bool) {
+  FByteswapper(input.numBones);
+  FByteswapper(input.rootBone);
+  FByteswapper(input.unk0);
+  FByteswapper(input.unk1);
+
+  for (uint32 i = 0; i < input.numBones; i++) {
+    FByteswapper(input.bones[i]);
+  }
+
+  for (uint32 i = 0; i < input.numBones; i++) {
+    FByteswapper(input.tms0[i]);
+  }
+
+  for (uint32 i = 0; i < input.numBones; i++) {
+    FByteswapper(input.tms1[i]);
+  }
+}
+
+template <> void FByteswapper(Primitive &input, bool) {
+  FByteswapper(input.indexOffset);
+  FByteswapper(input.vertexOffset);
+  FByteswapper(input.materialIndex);
+  FByteswapper(input.numVertices);
+  FByteswapper(input.numIndices);
+  FByteswapper(input.unk5);
+  FByteswapper(input.unk6);
+  FByteswapper(input.unk1);
+  FByteswapper(input.unk2);
+  FByteswapper(input.unk3);
+}
+
+template <> void FByteswapper(Mesh &input, bool) {
+  FByteswapper(input.numPrimitives);
+}
+
 template <> void FByteswapper(Moby &input, bool) {
   FByteswapper(input.unk00);
   FByteswapper(input.unk01);
-  FByteswapper(input.unk10);
+  FByteswapper(input.numMeshes);
   FByteswapper(input.unk11);
   FByteswapper(input.numBones);
   FByteswapper(input.unk13);
@@ -140,25 +187,70 @@ template <> void FByteswapper(Moby &input, bool) {
   FByteswapper(input.moby);
   FByteswapper(input.unk07);
   FByteswapper(input.null01);
+
+  if (input.skeleton) {
+    FByteswapper(*input.skeleton);
+  }
+
+  for (uint32 i = 0; i < input.numMeshes; i++) {
+    FByteswapper(input.meshes[i]);
+  }
+}
+
+template <> void FByteswapper(TiePrimitive &input, bool) {
+  FByteswapper(input.indexOffset);
+  FByteswapper(input.vertexOffset0);
+  FByteswapper(input.vertexOffset1);
+  FByteswapper(input.numVertices);
+  FByteswapper(input.unk000);
+  FByteswapper(input.numIndices);
+  FByteswapper(input.unk0);
+  FByteswapper(input.unk08);
+  FByteswapper(input.unk1);
+  FByteswapper(input.materialIndex);
+  FByteswapper(input.unk06);
+  FByteswapper(input.unk07);
+  FByteswapper(input.unk2);
+  FByteswapper(input.unk3);
+}
+
+template <> void FByteswapper(Tie &input, bool) {
+  FByteswapper(input.unk00);
+  FByteswapper(input.numPrimitives);
+  FByteswapper(input.unk01);
+  FByteswapper(input.unk02);
+  FByteswapper(input.unk13);
+  FByteswapper(input.unk14);
+  FByteswapper(input.meshScale);
+  FByteswapper(input.unk03);
+  FByteswapper(input.unk04);
 }
 
 struct ClassInfo {
   void (*swap)(CoreClass *, bool);
-  size_t size;
+  uint32 size;
+  bool openEnded;
 };
 
+template <class T>
+using is_open_ended = decltype(std::declval<T>().OpenEnded());
+template <class C>
+constexpr static bool is_open_ended_v = es::is_detected_v<is_open_ended, C>;
+
 template <class... C> auto RegisterClasses() {
-  return std::map<uint32, ClassInfo>{{C::ID, {fixupper<C>, sizeof(C)}}...};
+  return std::map<uint32, ClassInfo>{
+      {C::ID, {fixupper<C>, sizeof(C), is_open_ended_v<C>}}...};
 }
 
 static const std::map<uint32, ClassInfo> FIXUPS{
-    RegisterClasses<ResourceLighting, ResourceZones, ResourceAnimsets,
-                    ResourceMobys, ResourceShrubs, ResourceTies,
-                    ResourceFoliages, ResourceCubemap, ResourceShaders,
-                    ResourceHighmips, ResourceTextures, ResourceCinematics,
-                    TextureResource, Material, Texture, ShaderResourceLookup,
-                    ZoneHash, ZoneNameLookup, ZoneLightmap, ZoneShadowMap,
-                    ZoneDataLookup, ZoneData2Lookup, ZoneData, ZoneMap, Moby>(),
+    RegisterClasses<
+        ResourceLighting, ResourceZones, ResourceAnimsets, ResourceMobys,
+        ResourceShrubs, ResourceTies, ResourceFoliages, ResourceCubemap,
+        ResourceShaders, ResourceHighmips, ResourceTextures, ResourceCinematics,
+        TextureResource, Material, Texture, ShaderResource,
+        ShaderResourceLookup, ZoneHash, ZoneNameLookup, ZoneLightmap,
+        ZoneShadowMap, ZoneDataLookup, ZoneData2Lookup, ZoneData, ZoneMap, Moby,
+        Primitive, Tie, TiePrimitive>(),
 };
 
 void IGHW::FromStream(BinReaderRef_e rd) {
@@ -216,6 +308,10 @@ void IGHW::FromStream(BinReaderRef_e rd) {
       while (start < end) {
         found->second.swap(reinterpret_cast<CoreClass *>(start), false);
         start += found->second.size;
+
+        if (found->second.openEnded) {
+          break;
+        }
       }
     }
   }

@@ -17,19 +17,68 @@
 
 #pragma once
 #include "insomnia/internal/base.hpp"
+#include "spike/type/matrix44.hpp"
+
+struct Primitive : CoreClass {
+  static constexpr uint32 ID = 0xdd00;
+
+  uint32 indexOffset;
+  uint32 vertexOffset;
+  uint16 materialIndex;
+  uint16 numVertices;
+  uint8 numJoints;
+  uint8 vertexFormat;
+  uint8 index;
+  uint8 unk4;
+  uint32 numIndices;
+  uint32 unk5[3];
+  es::PointerX86<uint16> joints;
+  uint16 unk6[2];
+  uint16 unk1[3];
+  float unk2[3];
+  uint32 unk3;
+};
+
+struct Mesh : CoreClass {
+  static constexpr uint32 ID = 0xd700;
+
+  es::PointerX86<Primitive> primitives;
+  uint32 numPrimitives;
+};
+
+struct Bone {
+  uint16 unk;
+  int16 parentIndex;
+  uint16 child;
+  uint16 parentChild;
+};
+
+struct Skeleton : CoreClass {
+  static constexpr uint32 ID = 0xd300;
+
+  uint16 numBones;
+  uint16 rootBone;
+  es::PointerX86<Bone> bones;
+  es::PointerX86<es::Matrix44> tms0;
+  es::PointerX86<es::Matrix44> tms1;
+  uint16 unk0;
+  uint16 unk1;
+  uint32 trsDataBuffer;
+  uint32 off2;
+};
 
 struct Moby : CoreClass {
   static constexpr uint32 ID = 0xd100;
 
   float unk00[4];
   uint32 unk01[2];
-  uint16 unk10;
+  uint16 numMeshes;
   uint16 unk11;
   uint16 numBones;
   uint16 unk13;
   uint32 null00;
-  es::PointerX86<char> boneRemaps;
-  es::PointerX86<char> bones;
+  es::PointerX86<Mesh> meshes;
+  es::PointerX86<Skeleton> skeleton;
   es::PointerX86<char> unkData0;
   es::PointerX86<char> meshTransform;
   uint32 unk011[4];

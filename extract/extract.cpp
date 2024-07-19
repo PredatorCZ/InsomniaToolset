@@ -106,18 +106,19 @@ struct XMLContextWritter : pugi::xml_writer {
   AppExtractContext *ctx;
 };
 
-void ExtractShaders(AppContext *ctx, const IGHWTOC &segment,
+void ExtractShaders(AppContext *ctx,
+                    IGHWTOCIteratorConst<ResourceShaders> &shaders,
                     TextureRegistry &reg) {
   auto stream = ctx->RequestFile("shaders.dat");
   IGHW main;
 
-  for (auto &item : segment.Iter<ResourceShaders>()) {
+  for (auto &item : shaders) {
     const char *shaderPath = nullptr;
     BinReaderRef_e rd(*stream.Get());
     rd.SetRelativeOrigin(item.offset);
     main.FromStream(rd);
     IGHWTOCIteratorConst<Texture> textures;
-    IGHWTOCIteratorConst<ShaderResourceLookup> lookups;
+    IGHWTOCIteratorConst<ShaderResource> lookups;
     IGHWTOCIteratorConst<TextureResource> textureResources;
     CatchClasses(main, textures, lookups, textureResources);
 
@@ -494,6 +495,42 @@ void ExtractAnimSets(AppContext *ctx, IGHWTOCIteratorConst<ResourceMobys> mobys,
   }
 }
 
+void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
+                AppContext *ctx, AppContextStream &shdSteram);
+
+void ExtractMobys(AppContext *ctx,
+                  IGHWTOCIteratorConst<ResourceShaders> &shaders,
+                  IGHWTOCIteratorConst<ResourceMobys> &mobys) {
+  auto stream = ctx->RequestFile("mobys.dat");
+  auto shdStream = ctx->RequestFile("shaders.dat");
+  IGHW main;
+
+  for (auto &subItem : mobys) {
+    BinReaderRef_e subRd(*stream.Get());
+    subRd.SetRelativeOrigin(subItem.offset);
+    main.FromStream(*stream.Get());
+    MobyToGltf(shaders, main, ctx, shdStream);
+  }
+}
+
+void TieToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
+               AppContext *ctx, AppContextStream &shdStream);
+
+void ExtractTies(AppContext *ctx,
+                 IGHWTOCIteratorConst<ResourceShaders> &shaders,
+                 const IGHWTOCIteratorConst<ResourceTies> &mobys) {
+  auto stream = ctx->RequestFile("ties.dat");
+  auto shdStream = ctx->RequestFile("shaders.dat");
+  IGHW main;
+
+  for (auto &subItem : mobys) {
+    BinReaderRef_e subRd(*stream.Get());
+    subRd.SetRelativeOrigin(subItem.offset);
+    main.FromStream(*stream.Get());
+    TieToGltf(shaders, main, ctx, shdStream);
+  }
+}
+
 void AppProcessFile(AppContext *ctx) {
   BinReaderRef_e rd(ctx->GetStream());
   IGHW main;
@@ -523,6 +560,7 @@ void AppProcessFile(AppContext *ctx) {
   IGHWTOCIteratorConst<ResourceLighting> lightmaps;
   IGHWTOCIteratorConst<ResourceAnimsets> animsets;
   IGHWTOCIteratorConst<ResourceMobys> mobys;
+  IGHWTOCIteratorConst<ResourceShaders> shaders;
 
   auto ExtractWithLookup = [&](auto lookupId, auto iter, auto name) {
     std::string reqName = name + std::string(".dat");
@@ -566,11 +604,13 @@ void AppProcessFile(AppContext *ctx) {
     case ResourceMobys::ID:
       mobys = item.Iter<ResourceMobys>();
       if (settings.extractFilter[Filter::Mobys]) {
+        ExtractMobys(ctx, shaders, mobys);
         ExtractWithLookup(ResourceMobyPathLookupId, mobys, "mobys");
       }
       break;
     case ResourceTies::ID:
       if (settings.extractFilter[Filter::Ties]) {
+        ExtractTies(ctx, shaders, item.Iter<ResourceTies>());
         ExtractWithLookup(ResourceTiePathLookupId, item.Iter<ResourceTies>(),
                           "ties");
       }
@@ -599,19 +639,17 @@ void AppProcessFile(AppContext *ctx) {
       }
       break;
 
-    case ResourceShaders::ID:
-      if (settings.extractFilter[Filter::Shaders]) {
-        ExtractShaders(ctx, item, textureRegistry);
-      }
-      break;
-
     default:
       break;
     }
   };
 
   CatchClassesLambda(main, ExtractCommon, textures, highMips, zones, lightmaps,
-                     animsets);
+                     animsets, shaders);
+
+  if (settings.extractFilter[Filter::Shaders]) {
+    ExtractShaders(ctx, shaders, textureRegistry);
+  }
 
   if (settings.extractFilter[Filter::Animsets]) {
     ExtractAnimSets(ctx, mobys, animsets);

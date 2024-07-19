@@ -7,6 +7,8 @@ build_target(
   extract_effect
   TYPE
   ESMODULE
+  VERSION
+  1
   SOURCES
   extract_effect.cpp
   INCLUDES

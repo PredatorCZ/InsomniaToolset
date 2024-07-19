@@ -6,8 +6,8 @@ project(InsomniaToolset)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-ignored-qualifiers")
 
 option(CLI "" ON)
-#option(GLTF "" ON)
-set(EXPOSE_SYMBOLS spike;pugixml)
+option(GLTF "" ON)
+set(EXPOSE_SYMBOLS spike;pugixml;gltf)
 
 set(TPD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party)
 
@@ -22,4 +22,4 @@ add_spike_subdir(extract)
 add_spike_subdir(effect)
 
 set(TPD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/fragmented/3rd_party)
-add_spike_subdir(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/fragmented/psarc)
+add_spike_subdir(3rd_party/fragmented/psarc)
