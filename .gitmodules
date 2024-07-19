@@ -1,3 +1,6 @@
 [submodule "3rd_party/spike"]
 	path = 3rd_party/spike
 	url = git@github.com:predatorcz/spike.git
+[submodule "3rd_party/fragmented"]
+	path = 3rd_party/fragmented
+	url = git@github.com:PredatorCZ/fragmented.git
