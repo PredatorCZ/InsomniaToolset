@@ -20,6 +20,7 @@
 #include "spike/app_context.hpp"
 #include "spike/except.hpp"
 #include "spike/io/binreader_stream.hpp"
+#include <spike/master_printer.hpp>
 
 static AppInfo_s appInfo{
     .header = EffectExtract_DESC " v" EffectExtract_VERSION
@@ -33,31 +34,31 @@ void ExtractTexture(AppExtractContext *ctx, std::string path,
   TexelTile tile = TexelTile::Linear;
 
   auto GetFormat = [&] {
+    using T = TextureFormat;
     switch (info.format) {
-    case 0x85:
+    case T::RGBA8:
       tile = TexelTile::Morton;
       return TexelInputFormatType::RGBA8;
-    case 0x81:
+    case T::R8:
+      tile = TexelTile::Morton;
       return TexelInputFormatType::R8;
-    case 0x86:
-    case 0xa6: // srgb???
+    case T::BC1:
       return TexelInputFormatType::BC1;
-    case 0x88:
-    case 0xa8:
+    case T::BC3:
       return TexelInputFormatType::BC3;
-    case 0x87:
-    case 0xa7:
+    case T::BC2:
       return TexelInputFormatType::BC2;
-    case 0x84:
+    case T::R5G6B5:
       tile = TexelTile::Morton;
       return TexelInputFormatType::R5G6B5;
-    case 0x83:
+    case T::RGBA4:
       tile = TexelTile::Morton;
       return TexelInputFormatType::RGBA4;
-    case 0x8b:
+    case T::RG8:
       tile = TexelTile::Morton;
       return TexelInputFormatType::RG8;
     default:
+      PrintError("Invalid texture format: " + std::to_string(int(info.format)));
       break;
     }
 
@@ -84,12 +85,12 @@ void ExtractTexture(AppExtractContext *ctx, std::string path,
 void AppProcessFile(AppContext *ctx) {
   BinReaderRef_e rd(ctx->GetStream());
   IGHW main;
-  main.FromStream(rd);
+  main.FromStream(rd, Version::V2);
   auto dataStream = ctx->RequestFile(std::string(ctx->workingFile.GetFolder()) +
                                      "vfx_system_texel.dat");
   BinReaderRef_e rdd(*dataStream.Get());
   IGHW data;
-  data.FromStream(rdd);
+  data.FromStream(rdd, Version::V2);
   auto ectx = ctx->ExtractContext();
 
   IGHWTOCIteratorConst<TextureResource> texturResources;

@@ -114,7 +114,7 @@ REFLECT(CLASS(TextureControl3Type),
 namespace aggregators {
 void Material(IGHW &main, pugi::xml_node node) {
   IGHWTOCIteratorConst<Texture> textures;
-  IGHWTOCIteratorConst<ShaderResource> lookups;
+  IGHWTOCIteratorConst<MaterialResourceNameLookup> lookups;
   IGHWTOCIteratorConst<TextureResource> textureResources;
   IGHWTOCIteratorConst<::Material> materials;
 
@@ -123,8 +123,8 @@ void Material(IGHW &main, pugi::xml_node node) {
     case Texture::ID:
       textures = i.Iter<Texture>();
       break;
-    case ShaderResource::ID:
-      lookups = i.Iter<ShaderResource>();
+    case MaterialResourceNameLookup::ID:
+      lookups = i.Iter<MaterialResourceNameLookup>();
       break;
     case TextureResource::ID:
       textureResources = i.Iter<TextureResource>();

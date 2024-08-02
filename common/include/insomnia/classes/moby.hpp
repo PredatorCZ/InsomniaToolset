@@ -1,5 +1,5 @@
 /*  InsomniaLib
-    Copyright(C) 2021-2023 Lukas Cone
+    Copyright(C) 2021-2024 Lukas Cone
 
     This program is free software : you can redistribute it and / or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 #include "insomnia/internal/base.hpp"
 #include "spike/type/matrix44.hpp"
 
-struct Primitive : CoreClass {
+struct PrimitiveV2 : CoreClass {
   static constexpr uint32 ID = 0xdd00;
 
   uint32 indexOffset;
@@ -42,7 +42,7 @@ struct Primitive : CoreClass {
 struct Mesh : CoreClass {
   static constexpr uint32 ID = 0xd700;
 
-  es::PointerX86<Primitive> primitives;
+  es::PointerX86<PrimitiveV2> primitives;
   uint32 numPrimitives;
 };
 
@@ -67,7 +67,7 @@ struct Skeleton : CoreClass {
   uint32 off2;
 };
 
-struct Moby : CoreClass {
+struct MobyV2 : CoreClass {
   static constexpr uint32 ID = 0xd100;
 
   float unk00[4];
@@ -101,4 +101,47 @@ struct Moby : CoreClass {
   es::PointerX86<char> unkData5;
   es::PointerX86<char> unkData6;
   uint32 null01[12];
+};
+
+struct PrimitiveV1 : CoreClass {
+  static constexpr uint32 ID = 0xdd00;
+
+  uint16 materialIndex;
+  uint16 numVertices;
+  uint16 numIndices;
+  uint8 numJoints;
+  uint8 vertexFormat;
+  uint32 indexOffset;
+  uint32 vertexBufferOffset;
+  es::PointerX86<uint16> joints;
+  uint32 unk[3];
+};
+
+struct MeshV1 : CoreClass {
+  es::PointerX86<PrimitiveV1> primitives;
+  uint32 numPrimitives;
+};
+
+struct MobyV1 : CoreClass {
+  static constexpr uint32 ID = 0xd100;
+
+  float unk00[4];
+  uint16 unk01;
+  uint16 unk02;
+  uint16 numBones;
+  uint16 unk03;
+  uint16 numMeshes;
+  uint16 mobyId;
+  uint16 null00;
+  uint8 anotherSet; // bool?
+  uint8 null01;
+  es::PointerX86<Skeleton> skeleton;
+  es::PointerX86<char> unkData0;
+  es::PointerX86<MeshV1> meshes;
+  es::PointerX86<char> unkData1;
+  uint32 null02;
+  uint32 indexBufferOffset;
+  int32 vertexBufferOffset;
+  float meshScale;
+  uint32 unkRest[32];
 };

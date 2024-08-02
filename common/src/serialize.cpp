@@ -1,5 +1,5 @@
 /*  InsomniaLib
-    Copyright(C) 2021 Lukas Cone
+    Copyright(C) 2021-2024 Lukas Cone
 
     This program is free software : you can redistribute it and / or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,17 @@
 #include "insomnia/insomnia.hpp"
 #include "spike/except.hpp"
 #include "spike/io/binreader_stream.hpp"
-#include <map>
+#include <set>
+
+template <class C>
+void fixupper(CoreClass *data, bool way, std::set<void *> &swapped) {
+  if (swapped.contains(data)) {
+    return;
+  }
+
+  swapped.emplace(data);
+  FByteswapper(*static_cast<C *>(data), way);
+}
 
 template <> void FByteswapper(Hash &input, bool) {
   FByteswapper(input.part1);
@@ -58,7 +68,10 @@ template <> void FByteswapper(Material &input, bool) {
   FByteswapper(input.diffuseMapId);
   FByteswapper(input.normalMapId);
   FByteswapper(input.specularMapId);
-  FByteswapper(input.unk0);
+  FByteswapper(input.values);
+}
+
+template <> void FByteswapper(MaterialV1_5 &input, bool) {
   FByteswapper(input.values);
 }
 
@@ -75,7 +88,27 @@ template <> void FByteswapper(Texture &input, bool way) {
   FByteswapper(input.width);
 }
 
-template <> void FByteswapper(ShaderResource &input, bool) {
+template <> void FByteswapper(DirectionalLightmapTextureV1 &input, bool way) {
+  FByteswapper<Texture>(input, way);
+}
+
+template <> void FByteswapper(TextureV1 &input, bool way) {
+  FByteswapper<Texture>(input, way);
+}
+
+template <> void FByteswapper(BlendmapTextureV1 &input, bool way) {
+  FByteswapper<Texture>(input, way);
+}
+
+template <> void FByteswapper(LightmapTexture &input, bool way) {
+  FByteswapper<Texture>(input, way);
+}
+
+template <> void FByteswapper(ShadowmapTexture &input, bool way) {
+  FByteswapper<Texture>(input, way);
+}
+
+template <> void FByteswapper(MaterialResourceNameLookup &input, bool) {
   FByteswapper(input.mapHashes);
   FByteswapper(input.hash);
 }
@@ -119,10 +152,6 @@ template <> void FByteswapper(ZoneMap &input, bool way) {
   FByteswapper(static_cast<Texture &>(input), way);
 }
 
-template <class C> void fixupper(CoreClass *data, bool way) {
-  FByteswapper(*static_cast<C *>(data), way);
-}
-
 template <> void FByteswapper(Bone &input, bool) {
   FByteswapper(input.unk);
   FByteswapper(input.parentIndex);
@@ -149,7 +178,7 @@ template <> void FByteswapper(Skeleton &input, bool) {
   }
 }
 
-template <> void FByteswapper(Primitive &input, bool) {
+template <> void FByteswapper(PrimitiveV2 &input, bool) {
   FByteswapper(input.indexOffset);
   FByteswapper(input.vertexOffset);
   FByteswapper(input.materialIndex);
@@ -162,11 +191,20 @@ template <> void FByteswapper(Primitive &input, bool) {
   FByteswapper(input.unk3);
 }
 
+template <> void FByteswapper(PrimitiveV1 &input, bool) {
+  FByteswapper(input.materialIndex);
+  FByteswapper(input.numVertices);
+  FByteswapper(input.numIndices);
+  FByteswapper(input.indexOffset);
+  FByteswapper(input.vertexBufferOffset);
+  FByteswapper(input.unk);
+}
+
 template <> void FByteswapper(Mesh &input, bool) {
   FByteswapper(input.numPrimitives);
 }
 
-template <> void FByteswapper(Moby &input, bool) {
+template <> void FByteswapper(MobyV2 &input, bool) {
   FByteswapper(input.unk00);
   FByteswapper(input.unk01);
   FByteswapper(input.numMeshes);
@@ -197,7 +235,46 @@ template <> void FByteswapper(Moby &input, bool) {
   }
 }
 
-template <> void FByteswapper(TiePrimitive &input, bool) {
+template <> void FByteswapper(MeshV1 &input, bool) {
+  FByteswapper(input.numPrimitives);
+}
+
+template <> void FByteswapper(MobyV1 &input, bool) {
+  FByteswapper(input.unk00);
+  FByteswapper(input.unk01);
+  FByteswapper(input.unk02);
+  FByteswapper(input.numBones);
+  FByteswapper(input.unk03);
+  FByteswapper(input.numMeshes);
+  FByteswapper(input.mobyId);
+  FByteswapper(input.null00);
+  FByteswapper(input.null02);
+  FByteswapper(input.indexBufferOffset);
+  FByteswapper(input.vertexBufferOffset);
+  FByteswapper(input.meshScale);
+
+  const uint32 numMeshes = input.numMeshes * (input.anotherSet + 1);
+
+  for (uint32 i = 0; i < numMeshes; i++) {
+    FByteswapper(input.meshes[i]);
+  }
+}
+
+template <>
+void fixupper<MobyV1>(CoreClass *data, bool way, std::set<void *> &swapped) {
+  if (swapped.contains(data)) {
+    return;
+  }
+
+  swapped.emplace(data);
+
+  MobyV1 &input = *static_cast<MobyV1 *>(data);
+
+  FByteswapper(input, false);
+  fixupper<Skeleton>(input.skeleton, way, swapped);
+}
+
+template <> void FByteswapper(TiePrimitiveV2 &input, bool) {
   FByteswapper(input.indexOffset);
   FByteswapper(input.vertexOffset0);
   FByteswapper(input.vertexOffset1);
@@ -214,7 +291,7 @@ template <> void FByteswapper(TiePrimitive &input, bool) {
   FByteswapper(input.unk3);
 }
 
-template <> void FByteswapper(Tie &input, bool) {
+template <> void FByteswapper(TieV2 &input, bool) {
   FByteswapper(input.unk00);
   FByteswapper(input.numPrimitives);
   FByteswapper(input.unk01);
@@ -226,10 +303,233 @@ template <> void FByteswapper(Tie &input, bool) {
   FByteswapper(input.unk04);
 }
 
+template <> void FByteswapper(TiePrimitiveV1 &input, bool) {
+  FByteswapper(input.materialIndex);
+  FByteswapper(input.unk1);
+  FByteswapper(input.indexOffset);
+  FByteswapper(input.numIndices);
+  FByteswapper(input.numVertices);
+  FByteswapper(input.vertexOffset0);
+  FByteswapper(input.vertexOffset1);
+  FByteswapper(input.unk);
+}
+
+template <> void FByteswapper(TieV1 &input, bool) {
+  FByteswapper(input.numMeshes);
+  FByteswapper(input.unk01);
+  FByteswapper(input.unk02);
+  FByteswapper(input.unk13);
+  FByteswapper(input.unk14);
+  FByteswapper(input.offset0);
+  FByteswapper(input.null00);
+  FByteswapper(input.meshScale);
+  FByteswapper(input.unk03);
+}
+
+template <> void FByteswapper(TieInstanceV1 &input, bool) {
+  FByteswapper(input.tm);
+  FByteswapper(input.unk0);
+  FByteswapper(input.unk1);
+  FByteswapper(input.unk);
+}
+
+template <> void FByteswapper(RegionMesh &input, bool) {
+  FByteswapper(input.unk);
+  FByteswapper(input.position);
+  FByteswapper(input.materialIndex);
+  FByteswapper(input.unk6);
+  FByteswapper(input.unk3);
+  FByteswapper(input.indexOffset);
+  FByteswapper(input.vertexOffset);
+  FByteswapper(input.numIndices);
+  FByteswapper(input.numVerties);
+  FByteswapper(input.unk2);
+  FByteswapper(input.meshScale);
+  FByteswapper(input.unk4);
+}
+
+template <> void FByteswapper(MaterialV1 &input, bool) {
+  FByteswapper(input.unk0);
+  FByteswapper(input.unk1);
+  FByteswapper(input.values);
+}
+
+template <> void FByteswapper(ShrubPrimitive &input, bool) {
+  FByteswapper(input.materialIndex);
+  FByteswapper(input.unk1);
+  FByteswapper(input.numVertices);
+  FByteswapper(input.numIndices);
+  FByteswapper(input.vertexBufferOffset);
+  FByteswapper(input.indexOffset);
+  FByteswapper(input.unk4);
+}
+
+template <> void FByteswapper(Shrub &input, bool) {
+  FByteswapper(input.unk0);
+  FByteswapper(input.numPrimitives);
+  FByteswapper(input.null00);
+  FByteswapper(input.unk1);
+  FByteswapper(input.meshScale);
+  FByteswapper(input.unk2);
+}
+
+template <> void FByteswapper(ShrubInstance &input, bool) {
+  FByteswapper(input.tm);
+  FByteswapper(input.unk0);
+  FByteswapper(input.unk1);
+}
+
+template <> void FByteswapper(FoliageBranchLod &input, bool) {
+  FByteswapper(input.indexOffset);
+  FByteswapper(input.numIndices);
+  FByteswapper(input.unk);
+}
+
+template <> void FByteswapper(SpriteRange &input, bool) {
+  FByteswapper(input.indexBegin);
+  FByteswapper(input.indexEnd);
+  FByteswapper(input.positionsOffset);
+  FByteswapper(input.numSprites);
+}
+
+template <> void FByteswapper(SpriteLodRange &input, bool) {
+  FByteswapper(input.indexBegin);
+  FByteswapper(input.indexEnd);
+  FByteswapper(input.unk0);
+  FByteswapper(input.unk1);
+}
+
+template <> void FByteswapper(Foliage &input, bool) {
+  FByteswapper(input.textureIndex);
+  FByteswapper(input.indexOffset);
+  FByteswapper(input.null0);
+  FByteswapper(input.branchVertexOffset);
+  FByteswapper(input.unk1);
+  FByteswapper(input.branchLods);
+  FByteswapper(input.spriteVertexOffset);
+  FByteswapper(input.usedSpriteLods);
+  FByteswapper(input.spriteLodRanges);
+  FByteswapper(input.unk2);
+  FByteswapper(input.usedSpriteRanges);
+  FByteswapper(input.spriteRanges);
+  FByteswapper(input.unk3);
+}
+
+struct FoliageSpritePositions : CoreClass {
+  static constexpr uint32 ID = 0x9150;
+  Vector4A16 data;
+};
+
+struct NavmeshPositions : CoreClass {
+  static constexpr uint32 ID = 0x14100;
+  Vector4A16 data;
+};
+
+struct NavmeshPositions2 : CoreClass {
+  static constexpr uint32 ID = 0x14900;
+  Vector4A16 data;
+};
+
+template <> void FByteswapper(FoliageSpritePositions &input, bool) {
+  FByteswapper(input.data);
+}
+
+template <> void FByteswapper(NavmeshPositions &input, bool) {
+  FByteswapper(input.data);
+}
+
+template <> void FByteswapper(NavmeshPositions2 &input, bool) {
+  FByteswapper(input.data);
+}
+
+template <> void FByteswapper(FoliageInstance &input, bool) {
+  FByteswapper(input.tm);
+  FByteswapper(input.unk0);
+  FByteswapper(input.unk1);
+  FByteswapper(input.unk);
+}
+
+template <> void FByteswapper(HighmipTextureData &input, bool) {
+  FByteswapper(input.dataOffset);
+  FByteswapper(input.dataSize);
+  FByteswapper(input.textureIndex);
+  FByteswapper(input.unk0);
+  FByteswapper(input.unk2);
+  FByteswapper(input.null0);
+}
+
+template <> void FByteswapper(TieV1_5 &input, bool) {
+  FByteswapper(input.unk00);
+  FByteswapper(input.numMeshes);
+  FByteswapper(input.unk01);
+  FByteswapper(input.vertexBufferOffset0);
+  FByteswapper(input.vertexBufferOffset1);
+  FByteswapper(input.unk13);
+  FByteswapper(input.unk14);
+  FByteswapper(input.meshScale);
+  FByteswapper(input.unk03);
+  FByteswapper(input.unk04);
+}
+
+template <> void FByteswapper(TieInstanceV2 &input, bool) {
+  FByteswapper(input.tm);
+  FByteswapper(input.unk0);
+  FByteswapper(input.unk5);
+  FByteswapper(input.unk2);
+  FByteswapper(input.unk3);
+}
+
+template <> void FByteswapper(RegionMeshV2 &input, bool) {
+  FByteswapper(input.unk);
+  FByteswapper(input.indexOffset);
+  FByteswapper(input.vertexOffset);
+  FByteswapper(input.numIndices);
+  FByteswapper(input.numVerties);
+  FByteswapper(input.materialIndex);
+  FByteswapper(input.unk6);
+  FByteswapper(input.unk2);
+  FByteswapper(input.position);
+  FByteswapper(input.unk4);
+  FByteswapper(input.unk5);
+  FByteswapper(input.unk7);
+}
+
+template <> void FByteswapper(PlantPrimitive &item, bool) {
+  FByteswapper(item.vertexBufferOffset);
+  FByteswapper(item.indexOffset);
+  FByteswapper(item.numIndices);
+  FByteswapper(item.unk0);
+  FByteswapper(item.unk1);
+  FByteswapper(item.materialIndex);
+  FByteswapper(item.unk2);
+}
+
+template <> void FByteswapper(PlantClusters &item, bool) {
+  FByteswapper(item.unk0);
+  FByteswapper(item.unkOffset);
+  FByteswapper(item.numInstances);
+  FByteswapper(item.instancesOffset);
+  FByteswapper(item.unk4);
+  FByteswapper(item.unk5);
+  FByteswapper(item.null0);
+  FByteswapper(item.unk6);
+  FByteswapper(item.unk7);
+  FByteswapper(item.null1);
+  FByteswapper(item.unk8);
+}
+
+template <> void FByteswapper(PlantClusterInstance &item, bool) {
+  FByteswapper(item.tm);
+  FByteswapper(item.unk0);
+  FByteswapper(item.unk1);
+  FByteswapper(item.unk2);
+}
+
 struct ClassInfo {
-  void (*swap)(CoreClass *, bool);
-  uint32 size;
+  uint32 id;
+  uint16 size;
   bool openEnded;
+  void (*swap)(CoreClass *, bool, std::set<void *> &);
 };
 
 template <class T>
@@ -238,22 +538,31 @@ template <class C>
 constexpr static bool is_open_ended_v = es::is_detected_v<is_open_ended, C>;
 
 template <class... C> auto RegisterClasses() {
-  return std::map<uint32, ClassInfo>{
-      {C::ID, {fixupper<C>, sizeof(C), is_open_ended_v<C>}}...};
+  return std::vector<ClassInfo>{
+      {C::ID, sizeof(C), is_open_ended_v<C>, fixupper<C>}...};
 }
 
-static const std::map<uint32, ClassInfo> FIXUPS{
+static const std::vector<ClassInfo> FIXUPS[]{
+    RegisterClasses<
+        MobyV1, PrimitiveV1, TieV1, TiePrimitiveV1, TieInstanceV1, RegionMesh,
+        DirectionalLightmapTextureV1, TextureV1, BlendmapTextureV1, MaterialV1,
+        ShrubPrimitive, Shrub, ShrubInstance, Foliage, FoliageSpritePositions,
+        FoliageInstance, NavmeshPositions, NavmeshPositions2, PlantPrimitive>(),
+    RegisterClasses<MaterialV1_5, Texture, MaterialResourceNameLookup, MobyV1,
+                    PrimitiveV2, TiePrimitiveV2, HighmipTextureData,
+                    LightmapTexture, ShadowmapTexture, TieV1_5, TieInstanceV2,
+                    RegionMeshV2>(),
     RegisterClasses<
         ResourceLighting, ResourceZones, ResourceAnimsets, ResourceMobys,
         ResourceShrubs, ResourceTies, ResourceFoliages, ResourceCubemap,
         ResourceShaders, ResourceHighmips, ResourceTextures, ResourceCinematics,
-        TextureResource, Material, Texture, ShaderResource,
+        TextureResource, Material, Texture, MaterialResourceNameLookup,
         ShaderResourceLookup, ZoneHash, ZoneNameLookup, ZoneLightmap,
-        ZoneShadowMap, ZoneDataLookup, ZoneData2Lookup, ZoneData, ZoneMap, Moby,
-        Primitive, Tie, TiePrimitive>(),
+        ZoneShadowMap, ZoneDataLookup, ZoneData2Lookup, ZoneData, ZoneMap,
+        MobyV2, PrimitiveV2, TieV2, TiePrimitiveV2>(),
 };
 
-void IGHW::FromStream(BinReaderRef_e rd) {
+void IGHW::FromStream(BinReaderRef_e rd, Version version) {
   rd.SwapEndian(true);
   IGHWHeader hdr;
   rd.Push();
@@ -275,6 +584,7 @@ void IGHW::FromStream(BinReaderRef_e rd) {
     rd.ReadContainer(fixups, hdr.numFixups);
 
     for (auto f : fixups) {
+      f &= 0xfffffff;
       auto ptr = reinterpret_cast<es::PointerX86<uint32> *>(&buffer[0] + f);
       FByteswapper(*ptr);
       ptr->Fixup(buffer.data());
@@ -283,12 +593,26 @@ void IGHW::FromStream(BinReaderRef_e rd) {
 
   FByteswapper(*Header());
 
+  std::set<void *> swapped;
+
   for (auto &item : *this) {
     FByteswapper(item, false);
     item.data.Fixup(buffer.data());
-    auto found = FIXUPS.find(item.id);
+    auto &fixups = FIXUPS[int(version)];
+    auto found =
+        std::find_if(fixups.begin(), fixups.end(), [&](const ClassInfo &cls) {
+          if (cls.id != item.id) {
+            return false;
+          }
 
-    if (!es::IsEnd(FIXUPS, found)) {
+          if (item.count.ArrayType() == IGHWTOCArrayType::Array) {
+            return item.size == cls.size;
+          }
+
+          return true;
+        });
+
+    if (!es::IsEnd(fixups, found)) {
       char *start = reinterpret_cast<char *>(item.data.operator->());
       char *end = nullptr;
 
@@ -297,8 +621,8 @@ void IGHW::FromStream(BinReaderRef_e rd) {
         end = reinterpret_cast<char *>(start) + item.size;
         break;
       case IGHWTOCArrayType::Array:
-        end = reinterpret_cast<char *>(start) +
-              item.count.Count() * found->second.size;
+        end =
+            reinterpret_cast<char *>(start) + item.count.Count() * found->size;
         break;
 
       default:
@@ -306,10 +630,10 @@ void IGHW::FromStream(BinReaderRef_e rd) {
       }
 
       while (start < end) {
-        found->second.swap(reinterpret_cast<CoreClass *>(start), false);
-        start += found->second.size;
+        found->swap(reinterpret_cast<CoreClass *>(start), false, swapped);
+        start += found->size;
 
-        if (found->second.openEnded) {
+        if (found->openEnded) {
           break;
         }
       }

@@ -1,5 +1,5 @@
 /*  InsomniaLib
-    Copyright(C) 2021 Lukas Cone
+    Copyright(C) 2021-2024 Lukas Cone
 
     This program is free software : you can redistribute it and / or modify
     it under the terms of the GNU General Public License as published by
@@ -53,4 +53,38 @@ struct ZoneData : CoreClass {
   int32 null1;
   float unk1[4];
   int32 unk[4];
+};
+
+struct RegionMesh : CoreClass {
+  static constexpr uint32 ID = 0x6200;
+
+  float unk[16];
+  Vector position;
+  uint16 materialIndex;
+  uint16 unk6;
+  uint32 unk3;
+  uint32 indexOffset;
+  uint32 vertexOffset;
+  uint16 numIndices;
+  uint16 numVerties;
+  uint32 unk2[5];
+  float meshScale;
+  uint32 unk4[2];
+};
+
+struct RegionMeshV2 : CoreClass {
+  static constexpr uint32 ID = 0x6200;
+
+  float unk[16];
+  uint32 indexOffset;
+  uint32 vertexOffset;
+  uint16 numIndices;
+  uint16 numVerties;
+  uint16 unk7[2];
+  uint16 materialIndex;
+  uint16 unk6;
+  uint32 unk2[3];
+  Vector position;
+  uint32 unk4;
+  float unk5[4];
 };

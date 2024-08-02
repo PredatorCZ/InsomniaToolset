@@ -1,45 +1,12 @@
 #include "spike/gltf.hpp"
 #include "insomnia/insomnia.hpp"
+#include "insomnia/internal/vertex.hpp"
 #include "spike/app_context.hpp"
 #include "spike/io/binreader_stream.hpp"
 
-struct Vertex0 {
-  int16 position[3];
-  int16 boneIndex;
-  int16 uv[2];
-  uint32 normal;
-  uint32 tangent;
-};
-
-struct Vertex1 {
-  int16 position[3];
-  int16 unk;
-  uint8 bones[4];
-  uint8 weights[4];
-  int16 uv[2];
-  uint32 normal;
-  uint32 tangent;
-};
-
-void FByteswapper(Vertex0 &item) {
-  FByteswapper(item.position);
-  FByteswapper(item.boneIndex);
-  FByteswapper(item.uv);
-  FByteswapper(item.normal);
-  FByteswapper(item.tangent);
-}
-
-void FByteswapper(Vertex1 &item) {
-  FByteswapper(item.position);
-  FByteswapper(item.unk);
-  FByteswapper(item.uv);
-  FByteswapper(item.normal);
-  FByteswapper(item.tangent);
-}
-
 void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
                 AppContext *ctx, AppContextStream &shdStream) {
-  IGHWTOCIteratorConst<Moby> mobys;
+  IGHWTOCIteratorConst<MobyV2> mobys;
   IGHWTOCIteratorConst<VertexBuffer> vertexBuffers;
   IGHWTOCIteratorConst<IndexBuffer> indexBuffers;
   IGHWTOCIteratorConst<ShaderResourceLookup> shaderLookups;
@@ -65,17 +32,17 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
     if (found != shaders.end()) {
       BinReaderRef_e rd(*shdStream.Get());
       rd.SetRelativeOrigin(found->offset);
-      shaderMain.FromStream(rd);
-      IGHWTOCIteratorConst<ShaderResource> lookups;
+      shaderMain.FromStream(rd, Version::V2);
+      IGHWTOCIteratorConst<MaterialResourceNameLookup> lookups;
       CatchClasses(shaderMain, lookups);
-      const ShaderResource *lookup = lookups.begin();
+      const MaterialResourceNameLookup *lookup = lookups.begin();
       gmat.name = lookup->lookupPath.Get();
     } else {
       gmat.name = std::to_string(lookup.hash.part1);
     }
   }
 
-  const Moby *moby = mobys.begin();
+  const MobyV2 *moby = mobys.begin();
   const Skeleton *skeleton = moby->skeleton;
 
   for (uint32 i = 0; i < skeleton->numBones; i++) {
@@ -106,7 +73,7 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
   for (uint32 i = 0; i < moby->numMeshes; i++) {
     const Mesh &mesh = moby->meshes[i];
     for (uint32 p = 0; p < mesh.numPrimitives; p++) {
-      const Primitive &prim = mesh.primitives[p];
+      const PrimitiveV2 &prim = mesh.primitives[p];
 
       if (prim.numJoints < 2) {
         // continue;
@@ -221,7 +188,7 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
     gltf::Mesh &glMesh = main.meshes.emplace_back();
 
     for (uint32 p = 0; p < mesh.numPrimitives; p++) {
-      const Primitive &prim = mesh.primitives[p];
+      const PrimitiveV2 &prim = mesh.primitives[p];
       gltf::Primitive &glPrim = glMesh.primitives.emplace_back();
       glPrim.material = prim.materialIndex;
 
@@ -325,7 +292,7 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
 
 void TieToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
                AppContext *ctx, AppContextStream &shdStream) {
-  IGHWTOCIteratorConst<Tie> ties;
+  IGHWTOCIteratorConst<TieV2> ties;
   IGHWTOCIteratorConst<TieVertexBuffer> vertexBuffers;
   IGHWTOCIteratorConst<TieIndexBuffer> indexBuffers;
   IGHWTOCIteratorConst<ShaderResourceLookup> shaderLookups;
@@ -351,17 +318,17 @@ void TieToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
     if (found != shaders.end()) {
       BinReaderRef_e rd(*shdStream.Get());
       rd.SetRelativeOrigin(found->offset);
-      shaderMain.FromStream(rd);
-      IGHWTOCIteratorConst<ShaderResource> lookups;
+      shaderMain.FromStream(rd, Version::V2);
+      IGHWTOCIteratorConst<MaterialResourceNameLookup> lookups;
       CatchClasses(shaderMain, lookups);
-      const ShaderResource *lookup = lookups.begin();
+      const MaterialResourceNameLookup *lookup = lookups.begin();
       gmat.name = lookup->lookupPath.Get();
     } else {
       gmat.name = std::to_string(lookup.hash.part1);
     }
   }
 
-  const Tie *tie = ties.begin();
+  const TieV2 *tie = ties.begin();
   const uint16 *indexBuffer = &indexBuffers.begin()->data;
   const char *vertexBuffer = &vertexBuffers.begin()->data;
   std::map<uint16, uint16> joints;
@@ -389,7 +356,7 @@ void TieToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
   gltf::Mesh &glMesh = main.meshes.emplace_back();
 
   for (uint32 p = 0; p < tie->numPrimitives; p++) {
-    const TiePrimitive &prim = tie->primitives[p];
+    const TiePrimitiveV2 &prim = tie->primitives[p];
     gltf::Primitive &glPrim = glMesh.primitives.emplace_back();
     glPrim.material = prim.materialIndex;
 

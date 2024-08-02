@@ -15,6 +15,21 @@ In addition, converts mobys and ties into GLTF format.</extract_assets>
 
 <extract_psarc name="Extract PSARC">Extracts psarc archives.</extract_psarc>
 
+<levelmain_to_gltf name="Levelmain to GLTF">Converts level from Resistance: Fall of Man to GLTF.
+Currently there are some missing features:
+
+- detail textures
+- scene lighting data (per vertex lightmaps, texel directional lightmaps)
+- plant instances (unique meshes are stored in `plants.glb`)
+- moby instances (individual mobys are converted to GLTF)
+- Water(?)
+- Skybox
+- moby animations
+- terrain texture blend
+
+Textures are embedded in the GLTF file and converted to be up to GLTF standard.
+Textures, that were unable to be linked to GLTFs are normally extracted, however unconverted (normal and template maps)</levelmain_to_gltf>
+
 <toolset_footer>## [Latest Release](https://github.com/PredatorCZ/InsomniaToolset/releases)
 
 ## License

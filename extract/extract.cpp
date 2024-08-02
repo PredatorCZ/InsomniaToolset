@@ -116,9 +116,9 @@ void ExtractShaders(AppContext *ctx,
     const char *shaderPath = nullptr;
     BinReaderRef_e rd(*stream.Get());
     rd.SetRelativeOrigin(item.offset);
-    main.FromStream(rd);
+    main.FromStream(rd, Version::V2);
     IGHWTOCIteratorConst<Texture> textures;
-    IGHWTOCIteratorConst<ShaderResource> lookups;
+    IGHWTOCIteratorConst<MaterialResourceNameLookup> lookups;
     IGHWTOCIteratorConst<TextureResource> textureResources;
     CatchClasses(main, textures, lookups, textureResources);
 
@@ -225,31 +225,32 @@ void ExtractTexture(AppExtractContext *ctx, std::string path,
   TexelTile tile = TexelTile::Linear;
 
   auto GetFormat = [&] {
+    using T = TextureFormat;
     switch (info.format) {
-    case 0x85:
+    case T::RGBA8:
       tile = TexelTile::Morton;
       return TexelInputFormatType::RGBA8;
-    case 0x81:
+    case T::R8:
+      tile = TexelTile::Morton;
       return TexelInputFormatType::R8;
-    case 0x86:
-    case 0xa6: // srgb???
+    case T::BC1:
       return TexelInputFormatType::BC1;
-    case 0x88:
-    case 0xa8:
+    case T::BC3:
       return TexelInputFormatType::BC3;
-    case 0x87:
-    case 0xa7:
+    case T::BC2:
       return TexelInputFormatType::BC2;
-    case 0x84:
+    case T::R5G6B5:
       tile = TexelTile::Morton;
       return TexelInputFormatType::R5G6B5;
-    case 0x83:
+    case T::RGBA4:
       tile = TexelTile::Morton;
       return TexelInputFormatType::RGBA4;
-    case 0x8b:
+    case T::RG8:
       tile = TexelTile::Morton;
       return TexelInputFormatType::RG8;
     default:
+      PrintError("Invalid texture format: " +
+                 std::to_string(int(info.format)));
       break;
     }
 
@@ -321,7 +322,7 @@ void ExtractZones(AppContext *ctx,
   AppContextStream regionStream = std::move(
       ctx->FindFile(std::string(ctx->workingFile.GetFolder()), "^region.dat$"));
   IGHW region;
-  region.FromStream(*regionStream.Get());
+  region.FromStream(*regionStream.Get(), Version::V2);
   IGHWTOCIteratorConst<ZoneHash> zoneHashes;
   IGHWTOCIteratorConst<ZoneNameLookup> zoneNames;
 
@@ -375,7 +376,7 @@ void ExtractZones(AppContext *ctx,
 
     IGHW curZone;
     zonesData.SetRelativeOrigin(item.offset);
-    curZone.FromStream(zonesData);
+    curZone.FromStream(zonesData, Version::V2);
     IGHWTOCIteratorConst<ZoneLightmap> zoneLightmaps;
     IGHWTOCIteratorConst<ZoneShadowMap> zoneShadowmaps;
     IGHWTOCIteratorConst<ZoneDataLookup> zoneDataLookups;
@@ -443,8 +444,8 @@ void ExtractAnimSets(AppContext *ctx, IGHWTOCIteratorConst<ResourceMobys> mobys,
       BinReaderRef_e subRd(*stream.Get());
       subRd.SetRelativeOrigin(moby.offset);
       IGHW item;
-      item.FromStream(subRd);
-      IGHWTOCIteratorConst<Moby> model;
+      item.FromStream(subRd, Version::V2);
+      IGHWTOCIteratorConst<MobyV2> model;
 
       CatchClasses(item, model);
       const Hash animHash = model.at(0).animset;
@@ -508,7 +509,7 @@ void ExtractMobys(AppContext *ctx,
   for (auto &subItem : mobys) {
     BinReaderRef_e subRd(*stream.Get());
     subRd.SetRelativeOrigin(subItem.offset);
-    main.FromStream(*stream.Get());
+    main.FromStream(*stream.Get(), Version::V2);
     MobyToGltf(shaders, main, ctx, shdStream);
   }
 }
@@ -526,7 +527,7 @@ void ExtractTies(AppContext *ctx,
   for (auto &subItem : mobys) {
     BinReaderRef_e subRd(*stream.Get());
     subRd.SetRelativeOrigin(subItem.offset);
-    main.FromStream(*stream.Get());
+    main.FromStream(*stream.Get(), Version::V2);
     TieToGltf(shaders, main, ctx, shdStream);
   }
 }
@@ -534,7 +535,7 @@ void ExtractTies(AppContext *ctx,
 void AppProcessFile(AppContext *ctx) {
   BinReaderRef_e rd(ctx->GetStream());
   IGHW main;
-  main.FromStream(rd);
+  main.FromStream(rd, Version::V2);
   char uniBuffer[0x80000]{};
   auto ectx = ctx->ExtractContext();
 

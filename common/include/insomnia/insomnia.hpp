@@ -1,5 +1,5 @@
 /*  InsomniaLib
-    Copyright(C) 2021 Lukas Cone
+    Copyright(C) 2021-2024 Lukas Cone
 
     This program is free software : you can redistribute it and / or modify
     it under the terms of the GNU General Public License as published by
@@ -16,9 +16,12 @@
 */
 
 #pragma once
+#include "classes/foliage.hpp"
 #include "classes/moby.hpp"
+#include "classes/plant.hpp"
 #include "classes/region.hpp"
 #include "classes/resource.hpp"
+#include "classes/shrub.hpp"
 #include "classes/tie.hpp"
 #include "classes/zone.hpp"
 #include "internal/settings.hpp"
@@ -102,8 +105,14 @@ struct IGHWHeader {
   uint64 DEADDEAD;
 };
 
+enum class Version {
+  RFOM,
+  TOD,
+  V2,
+};
+
 struct IGHW {
-  void IS_EXTERN FromStream(BinReaderRef_e rd);
+  void IS_EXTERN FromStream(BinReaderRef_e rd, Version version);
   auto Header() const {
     return reinterpret_cast<const IGHWHeader *>(buffer.data());
   }

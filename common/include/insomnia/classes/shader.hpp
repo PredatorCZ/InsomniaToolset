@@ -1,5 +1,5 @@
 /*  InsomniaLib
-    Copyright(C) 2021 Lukas Cone
+    Copyright(C) 2021-2024 Lukas Cone
     Texture class derived from RPCS3 project
 
     This program is free software : you can redistribute it and / or modify
@@ -27,16 +27,6 @@ struct TextureResource : CoreClass {
   uint32 totalSize;
 
   bool operator==(uint32 other) const { return hash == other; }
-};
-
-struct Material : CoreClass {
-  static constexpr uint32 ID = 0x5000;
-  int32 diffuseMapId;
-  int32 normalMapId;
-  int32 specularMapId;
-  int32 detailMapId;
-  uint32 unk0; // flags?
-  Vector4A16 values[6];
 };
 
 struct TextureFlags {
@@ -119,12 +109,24 @@ struct TextureControl3 {
 
 using TextureControl3Type = TextureControl3::Type;
 
+enum class TextureFormat : uint8 {
+  R8 = 0x81,
+  RGB5A1,
+  RGBA4,
+  R5G6B5,
+  RGBA8,
+  BC1,
+  BC2,
+  BC3,
+  RG8 = 0x8B
+};
+
 // NV4097_SET_*TEXTURE_* registry dump
 struct Texture : CoreClass {
   static constexpr uint32 ID = 0x5200;
   uint32 offset;
   uint16 numMips;
-  uint8 format;
+  TextureFormat format;
   TextureFlagsType flags;
   TextureAddressType address;
   TextureControl0Type control0;
@@ -135,7 +137,74 @@ struct Texture : CoreClass {
   uint32 borderColor;
 };
 
-struct ShaderResource : CoreClass {
+struct LightmapTexture : Texture {
+  static constexpr uint32 ID = 0x5400;
+};
+
+struct ShadowmapTexture : Texture {
+  static constexpr uint32 ID = 0x5410;
+};
+
+struct DirectionalLightmapTextureV1 : Texture {
+  static constexpr uint32 ID = 0x5500;
+};
+
+struct TextureV1 : Texture {
+  static constexpr uint32 ID = 0x5300;
+};
+
+struct BlendmapTextureV1 : Texture {
+  static constexpr uint32 ID = 0x5800;
+};
+
+struct MaterialV1 : CoreClass {
+  static constexpr uint32 ID = 0x5001;
+
+  float unk0[5];
+  uint32 unk1[2];
+  bool unkFlag : 1;
+  bool useSpecular : 1;
+  bool useGlossiness : 1;
+  bool useNormalMap : 1;
+  bool useDetailMap : 1;
+  bool restFlags : 3;
+  uint8 blendMode;
+  uint8 unk2;
+  uint8 null0;
+  es::PointerX86<Texture> textures[4];
+  Vector4A16 values[5];
+};
+
+struct MaterialV1_5 : CoreClass {
+  static constexpr uint32 ID = 0x5000;
+
+  es::PointerX86<Texture> diffuse;
+  es::PointerX86<Texture> normal;
+  es::PointerX86<Texture> specular;
+  es::PointerX86<Texture> detail;
+  bool unkFlag : 1;
+  bool useSpecular : 1;
+  bool useGlossiness : 1;
+  bool useNormalMap : 1;
+  bool useDetailMap : 1;
+  bool restFlags : 3;
+  uint8 blendMode;
+  uint8 unk0;
+  uint8 unk1;
+  Vector4A16 values[6];
+};
+
+struct Material : CoreClass {
+  static constexpr uint32 ID = 0x5000;
+  int32 diffuseMapId;
+  int32 normalMapId;
+  int32 specularMapId;
+  int32 detailMapId;
+  uint32 unk0; // flags?
+  Vector4A16 values[6];
+};
+
+struct MaterialResourceNameLookup : CoreClass {
   static constexpr uint32 ID = 0x5d00;
   Hash hash;
   es::PointerX86<char> lookupPath;
@@ -147,6 +216,17 @@ struct ShaderResource : CoreClass {
 struct ShaderResourceLookup : CoreClass {
   static constexpr uint32 ID = 0x5600;
   Hash hash;
+};
+
+struct HighmipTextureData : CoreClass {
+  static constexpr uint32 ID = 0x9800;
+
+  uint32 dataOffset;
+  uint16 dataSize;
+  uint16 textureIndex;
+  int16 unk0;
+  uint16 unk2;
+  uint32 null0;
 };
 
 namespace aggregators {

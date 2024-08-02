@@ -1,5 +1,5 @@
 /*  InsomniaLib
-    Copyright(C) 2021 Lukas Cone
+    Copyright(C) 2021-2024 Lukas Cone
 
     This program is free software : you can redistribute it and / or modify
     it under the terms of the GNU General Public License as published by
@@ -47,6 +47,20 @@ static constexpr uint32 ResourceTiePathLookupId = 0x3410;
 static constexpr uint32 ResourceShrubPathLookupId = 0xb700;
 static constexpr uint32 ResourceCinematicPathLookupId = 0x17d00;
 
+template <uint32 id_> struct ResourceNameLookup : CoreClass {
+  static constexpr uint32 ID = id_;
+  Hash hash;
+  es::PointerX86<char> path;
+  uint32 unk;
+
+  bool operator<(const Hash other) const { return hash < other; }
+  bool operator==(const Hash other) const { return hash == other; }
+  bool operator==(uint32 other) const { return hash.part2 == other; }
+};
+
+using ResourceMobyPath = ResourceNameLookup<0x9480>;
+using ResourceTiePath = ResourceNameLookup<0x9280>;
+
 struct EffectTextureBuffer : CoreClass {
   static constexpr uint32 ID = 0x5300;
   char data;
@@ -59,5 +73,15 @@ struct VertexBuffer : CoreClass {
 
 struct IndexBuffer : CoreClass {
   static constexpr uint32 ID = 0xe100;
+  uint16 data;
+};
+
+struct LevelVertexBuffer : CoreClass {
+  static constexpr uint32 ID = 0x9000;
+  char data;
+};
+
+struct LevelIndexBuffer : CoreClass {
+  static constexpr uint32 ID = 0x9100;
   uint16 data;
 };

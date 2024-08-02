@@ -10,6 +10,7 @@ Head to this **[Wiki](https://github.com/PredatorCZ/Spike/wiki/Spike)** for more
 <li><a href="#Extract-Assets">Extract Assets</a></li>
 <li><a href="#Extract-Effect">Extract Effect</a></li>
 <li><a href="#Extract-PSARC">Extract PSARC</a></li>
+<li><a href="#Levelmain-to-GLTF">Levelmain to GLTF</a></li>
 </ul>
 
 ## Extract Assets
@@ -53,7 +54,26 @@ Extracts and converts textures from `vfx_system_header.dat`.
 
 Extracts psarc archives.
 
+## Levelmain to GLTF
 
+### Module command: levelmain_to_gltf
+
+Converts level from Resistance: Fall of Man to GLTF.
+Currently there are some missing features:
+
+- detail textures
+- scene lighting data (per vertex lightmaps, texel directional lightmaps)
+- plant instances (unique meshes are stored in `plants.glb`)
+- moby instances (individual mobys are converted to GLTF)
+- Water(?)
+- Skybox
+- moby animations
+- terrain texture blend
+
+Textures are embedded in the GLTF file and converted to be up to GLTF standard.
+Textures, that were unable to be linked to GLTFs are normally extracted, however unconverted (normal and template maps)
+
+### Input file patterns: `^ps3levelmain.dat$`
 
 ## [Latest Release](https://github.com/PredatorCZ/InsomniaToolset/releases)
 
