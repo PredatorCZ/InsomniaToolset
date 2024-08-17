@@ -346,6 +346,21 @@ void MakeFoliageMaterials(AppContext *ctx, IMGLTF &main,
   }
 }
 
+struct AttributeMul : AttributeCodec {
+  AttributeMul(Vector scale) : mul(scale * YARD_TO_M) {}
+  void Sample(uni::FormatCodec::fvec &, const char *, size_t) const override {}
+  void Transform(uni::FormatCodec::fvec &in) const override {
+    for (Vector4A16 &v : in) {
+      v = v * mul;
+    }
+  }
+  bool CanSample() const override { return false; }
+  bool CanTransform() const override { return true; }
+  bool IsNormalized() const override { return false; }
+
+  Vector4A16 mul;
+};
+
 std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
                                 BinReaderRef_e stream,
                                 IGHWTOCIteratorConst<MaterialV1> materials,
@@ -368,6 +383,7 @@ std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
       tm = ptm * tm;
     }
 
+    tm.r4() *= YARD_TO_M;
     tm.r1().w = 0;
     tm.r2().w = 0;
     tm.r3().w = 0;
@@ -411,6 +427,7 @@ std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
     for (auto &[jid, idx] : joints) {
       skn.joints[idx] = jid;
       es::Matrix44 ibm = skeleton->tms1[jid];
+      ibm.r4() *= YARD_TO_M;
       ibm.r1().w = 0;
       ibm.r2().w = 0;
       ibm.r3().w = 0;
@@ -467,21 +484,7 @@ std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
     const uint16 *jointMap = nullptr;
   } attributeBoneIndices{joints};
 
-  struct AttributeMul : AttributeCodec {
-    AttributeMul(float scale) : mul(scale * 0x7fff) {}
-    void Sample(uni::FormatCodec::fvec &, const char *, size_t) const override {
-    }
-    void Transform(uni::FormatCodec::fvec &in) const override {
-      for (Vector4A16 &v : in) {
-        v = v * mul;
-      }
-    }
-    bool CanSample() const override { return false; }
-    bool CanTransform() const override { return true; }
-    bool IsNormalized() const override { return false; }
-
-    Vector4A16 mul;
-  } attributeMul{moby.meshScale};
+  AttributeMul attributeMul{moby.meshScale * 0x7fff};
 
   std::map<uint16, uint16> materialRemaps;
 
@@ -615,21 +618,7 @@ void TieToGltf(const TieV1 &tie, IMGLTF &level,
   glNode.name = "TieMesh_" + std::to_string(index);
   gltf::Mesh &glMesh = level.meshes.emplace_back();
 
-  struct AttributeMul : AttributeCodec {
-    AttributeMul(Vector scale) : mul(scale * 0x7fff) {}
-    void Sample(uni::FormatCodec::fvec &, const char *, size_t) const override {
-    }
-    void Transform(uni::FormatCodec::fvec &in) const override {
-      for (Vector4A16 &v : in) {
-        v = v * mul;
-      }
-    }
-    bool CanSample() const override { return false; }
-    bool CanTransform() const override { return true; }
-    bool IsNormalized() const override { return false; }
-
-    Vector4A16 mul;
-  } attributeMul{tie.meshScale};
+  AttributeMul attributeMul{tie.meshScale * 0x7fff};
 
   for (uint32 p = 0; p < tie.numMeshes; p++) {
     const TiePrimitiveV1 &prim = tie.primitives[p];
@@ -683,7 +672,13 @@ void TieToGltf(const TieV1 &tie, IMGLTF &level,
 
   for (auto &inst : tieInstances) {
     if (inst.tie == &tie) {
-      tms.emplace_back(inst.tm);
+      es::Matrix44 tm(inst.tm);
+      tm.r4() *= YARD_TO_M;
+      tm.r1().w = 0;
+      tm.r2().w = 0;
+      tm.r3().w = 0;
+      tm.r4().w = 1;
+      tms.emplace_back(tm);
     }
   }
 
@@ -757,21 +752,7 @@ void ShrubToGltf(const Shrub &shrub, IMGLTF &level,
   glNode.name = "Shrub_" + std::to_string(index);
   gltf::Mesh &glMesh = level.meshes.emplace_back();
 
-  struct AttributeMul : AttributeCodec {
-    AttributeMul(Vector scale) : mul(scale) {}
-    void Sample(uni::FormatCodec::fvec &, const char *, size_t) const override {
-    }
-    void Transform(uni::FormatCodec::fvec &in) const override {
-      for (Vector4A16 &v : in) {
-        v = v * mul;
-      }
-    }
-    bool CanSample() const override { return false; }
-    bool CanTransform() const override { return true; }
-    bool IsNormalized() const override { return false; }
-
-    Vector4A16 mul;
-  } attributeMul{shrub.meshScale / 0x1000};
+  AttributeMul attributeMul{shrub.meshScale / 0x1000};
 
   for (uint32 p = 0; p < shrub.numPrimitives; p++) {
     const ShrubPrimitive &prim = shrub.primitives[p];
@@ -824,7 +805,13 @@ void ShrubToGltf(const Shrub &shrub, IMGLTF &level,
 
   for (auto &inst : shrubInstances) {
     if (inst.shrub == &shrub) {
-      tms.emplace_back(inst.tm);
+      es::Matrix44 tm(inst.tm);
+      tm.r4() *= YARD_TO_M;
+      tm.r1().w = 0;
+      tm.r2().w = 0;
+      tm.r3().w = 0;
+      tm.r4().w = 1;
+      tms.emplace_back(tm);
     }
   }
 
@@ -914,8 +901,8 @@ void RegionToGltf(IGHWTOCIteratorConst<RegionMesh> items, IMGLTF &level,
     }
 
     AttributeMad attributeMad;
-    attributeMad.mul = Vector4A16(0x7fff) / 0x100;
-    attributeMad.add = item.position / 0x100;
+    attributeMad.mul = (Vector4A16(0x7fff) / 0x100) * YARD_TO_M;
+    attributeMad.add = (item.position / 0x100) * YARD_TO_M;
 
     Attribute attrs[]{
         {
@@ -984,12 +971,14 @@ void FoliageToGltf(const Foliage &foliage, IMGLTF &level,
     }
 
     AttributeUnormToSnorm sn;
+    AttributeMul attributeMul(YARD_TO_M);
 
     Attribute attrs[]{
         {
             .type = uni::DataType::R16G16B16A16,
             .format = uni::FormatType::FLOAT,
             .usage = AttributeType::Position,
+            .customCodec = &attributeMul,
         },
         {
             .type = uni::DataType::R16G16,
@@ -1042,7 +1031,13 @@ void FoliageToGltf(const Foliage &foliage, IMGLTF &level,
 
   for (auto &inst : instances) {
     if (inst.foliage == &foliage) {
-      tms.emplace_back(inst.tm);
+      es::Matrix44 tm(inst.tm);
+      tm.r4() *= YARD_TO_M;
+      tm.r1().w = 0;
+      tm.r2().w = 0;
+      tm.r3().w = 0;
+      tm.r4().w = 1;
+      tms.emplace_back(tm);
     }
   }
 
@@ -1157,11 +1152,14 @@ void FoliageToGltf(const Foliage &foliage, IMGLTF &level,
         // [4, 0, 1, 2, 3])
       }
 
+      AttributeMul attributeMul(YARD_TO_M);
+
       Attribute attrs[]{
           {
               .type = uni::DataType::R32G32B32,
               .format = uni::FormatType::FLOAT,
               .usage = AttributeType::Position,
+              .customCodec = &attributeMul,
           },
           {
               .type = uni::DataType::R16G16,
@@ -1245,11 +1243,14 @@ void PlantsToGltf(const PlantPrimitive &prim, IMGLTF &level,
     FByteswapper(v);
   }
 
+  AttributeMul attributeMul(YARD_TO_M);
+
   Attribute attrs[]{
       {
           .type = uni::DataType::R16G16B16A16,
           .format = uni::FormatType::FLOAT,
           .usage = AttributeType::Position,
+          .customCodec = &attributeMul,
       },
       {
           .type = uni::DataType::R8G8B8A8,
@@ -1271,6 +1272,7 @@ void AppProcessFile(AppContext *ctx) {
   BinReaderRef_e rd(ctx->GetStream());
   IGHW main;
   main.FromStream(rd, Version::RFOM);
+  const std::string workFolder(ctx->workingFile.GetFolder());
 
   IGHWTOCIteratorConst<MobyV1> mobys;
   IGHWTOCIteratorConst<TieV1> ties;
@@ -1285,8 +1287,8 @@ void AppProcessFile(AppContext *ctx) {
   IGHWTOCIteratorConst<Foliage> foliages;
   IGHWTOCIteratorConst<FoliageInstance> foliageInstances;
   IGHWTOCIteratorConst<PlantPrimitive> plantMeshes;
-  auto txStr = ctx->RequestFile("ps3leveltexs.dat");
-  auto vtxStr = ctx->RequestFile("ps3levelverts.dat");
+  auto txStr = ctx->RequestFile(workFolder + "ps3leveltexs.dat");
+  auto vtxStr = ctx->RequestFile(workFolder + "ps3levelverts.dat");
   IGHW buffers;
   buffers.FromStream(*vtxStr.Get(), Version::RFOM);
   IGHWTOCIteratorConst<LevelVertexBuffer> verts;
@@ -1336,10 +1338,7 @@ void AppProcessFile(AppContext *ctx) {
                          txRd.BaseStream(), textureRemaps);
 
     totalTextures.merge(textureRemaps);
-    level.FinishAndSave(
-        ctx->NewFile(std::string(ctx->workingFile.GetFolder()) + "level.glb")
-            .str,
-        "");
+    level.FinishAndSave(ctx->NewFile(workFolder + "level.glb").str, "");
   }
 
   {
@@ -1360,10 +1359,7 @@ void AppProcessFile(AppContext *ctx) {
       m.doubleSided = true;
     }
 
-    plants.FinishAndSave(
-        ctx->NewFile(std::string(ctx->workingFile.GetFolder()) + "plants.glb")
-            .str,
-        "");
+    plants.FinishAndSave(ctx->NewFile(workFolder + "plants.glb").str, "");
   }
 
   ExtractTextures(ctx, "lightmap_",

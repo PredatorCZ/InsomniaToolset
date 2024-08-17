@@ -29,6 +29,9 @@
 #include "spike/type/bitfield.hpp"
 #include <typeinfo>
 
+static const float YARD_TO_M = 0.9144;
+static const float M_TO_YARD = 1 / YARD_TO_M;
+
 enum class IGHWTOCArrayType {
   Buffer,
   Array,
@@ -109,6 +112,7 @@ enum class Version {
   RFOM,
   TOD,
   V2,
+  R3,
 };
 
 struct IGHW {
