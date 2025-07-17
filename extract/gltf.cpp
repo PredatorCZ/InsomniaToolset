@@ -71,7 +71,7 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
   std::map<uint16, uint16> joints;
 
   for (uint32 i = 0; i < moby->numMeshes; i++) {
-    const Mesh &mesh = moby->meshes[i];
+    const MeshV2 &mesh = moby->meshes[i];
     for (uint32 p = 0; p < mesh.numPrimitives; p++) {
       const PrimitiveV2 &prim = mesh.primitives[p];
 
@@ -175,7 +175,7 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
   } attributeMul{moby->meshScale};
 
   for (uint32 i = 0; i < moby->numMeshes; i++) {
-    const Mesh &mesh = moby->meshes[i];
+    const MeshV2 &mesh = moby->meshes[i];
     if (mesh.primitives == 0) {
       continue;
     }

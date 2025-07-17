@@ -17,33 +17,78 @@
 
 #pragma once
 #include "insomnia/internal/base.hpp"
-
-struct ShrubPrimitive : CoreClass {
-  static constexpr uint32 ID = 0xB200;
-  uint16 materialIndex;
-  uint16 unk1;
-  uint16 numVertices;
-  uint16 numIndices;
-  uint32 vertexBufferOffset;
-  uint32 indexOffset;
-  uint16 unk4[8];
-};
+#include <span>
 
 struct Shrub : CoreClass {
-  static constexpr uint32 ID = 0xB300;
-  float unk0[20];
-  es::PointerX86<ShrubPrimitive> primitives;
-  uint32 numPrimitives;
-  uint32 null00[2];
-  uint16 unk1[2];
-  float meshScale;
-  float unk2[6];
+  static constexpr uint32 ID = 0xC700;
+
+  uint32 vertexBufferOffset;
+  uint32 indexOffset;
+  uint32 numIndices;
+  uint32 unk0;
+  float unk1[4];
+  uint16 materialIndex;
+  uint32 unk2[3];
 };
 
-struct ShrubInstance : CoreClass {
-  static constexpr uint32 ID = 0x9500;
+struct ShrubInstance {
+  struct LocalRange {
+    uint8 count;
+    uint8 offset;
+  };
   es::Matrix44 tm;
-  float unk0[4];
-  es::PointerX86<Shrub> shrub;
-  int32 unk1[11];
+  LocalRange localRanges[4];
+  uint32 visOffset;
+  uint16 shrubsMask;
+  uint16 unk1;
+};
+
+struct ShrubVis {
+  Vector position;
+  float scale;
+  Vector r1;
+  float unk0;
+  Vector r2;
+  float unk1[5];
+};
+
+struct Shrubs : CoreClass {
+  static constexpr uint32 ID = 0xC650;
+
+  uint32 unk0;
+  uint32 unkOffset;
+  uint32 numInstances;
+  uint32 instancesOffset;
+  uint32 unk4;
+  uint32 unk5;
+  uint32 null0[2];
+  float unk6[3];
+  uint32 unk7;
+  uint32 null1[20];
+
+  void OpenEnded();
+
+  std::span<ShrubInstance> Instances() {
+    return {reinterpret_cast<ShrubInstance *>(reinterpret_cast<char *>(this) +
+                                              instancesOffset),
+            numInstances};
+  }
+
+  std::span<const ShrubInstance> Instances() const {
+    return {reinterpret_cast<const ShrubInstance *>(
+                reinterpret_cast<const char *>(this) + instancesOffset),
+            numInstances};
+  }
+
+  std::span<ShrubVis> Vis() {
+    return {reinterpret_cast<ShrubVis *>(reinterpret_cast<char *>(this) +
+                                         unkOffset),
+            unk0};
+  }
+
+  std::span<const ShrubVis> Vis() const {
+    return {reinterpret_cast<const ShrubVis *>(
+                reinterpret_cast<const char *>(this) + unkOffset),
+            unk0};
+  }
 };

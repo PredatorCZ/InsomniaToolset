@@ -200,7 +200,7 @@ template <> void FByteswapper(PrimitiveV1 &input, bool) {
   FByteswapper(input.unk);
 }
 
-template <> void FByteswapper(Mesh &input, bool) {
+template <> void FByteswapper(MeshV2 &input, bool) {
   FByteswapper(input.numPrimitives);
 }
 
@@ -354,28 +354,29 @@ template <> void FByteswapper(MaterialV1 &input, bool) {
   FByteswapper(input.values);
 }
 
-template <> void FByteswapper(ShrubPrimitive &input, bool) {
+template <> void FByteswapper(Detail &input, bool) {
   FByteswapper(input.materialIndex);
   FByteswapper(input.unk1);
   FByteswapper(input.numVertices);
   FByteswapper(input.numIndices);
   FByteswapper(input.vertexBufferOffset);
   FByteswapper(input.indexOffset);
-  FByteswapper(input.unk4);
+  FByteswapper(input.meshScale);
+  FByteswapper(input.unk1);
 }
 
-template <> void FByteswapper(Shrub &input, bool) {
+template <> void FByteswapper(DetailCluster &input, bool) {
   FByteswapper(input.unk0);
   FByteswapper(input.numPrimitives);
   FByteswapper(input.null00);
   FByteswapper(input.unk1);
-  FByteswapper(input.meshScale);
   FByteswapper(input.unk2);
 }
 
-template <> void FByteswapper(ShrubInstance &input, bool) {
+template <> void FByteswapper(DetailInstance &input, bool) {
   FByteswapper(input.tm);
   FByteswapper(input.unk0);
+  FByteswapper(input.unk2);
   FByteswapper(input.unk1);
 }
 
@@ -494,7 +495,7 @@ template <> void FByteswapper(RegionMeshV2 &input, bool) {
   FByteswapper(input.unk7);
 }
 
-template <> void FByteswapper(PlantPrimitive &item, bool) {
+template <> void FByteswapper(Shrub &item, bool) {
   FByteswapper(item.vertexBufferOffset);
   FByteswapper(item.indexOffset);
   FByteswapper(item.numIndices);
@@ -504,7 +505,23 @@ template <> void FByteswapper(PlantPrimitive &item, bool) {
   FByteswapper(item.unk2);
 }
 
-template <> void FByteswapper(PlantClusters &item, bool) {
+template <> void FByteswapper(ShrubInstance &item, bool) {
+  FByteswapper(item.tm);
+  FByteswapper(item.visOffset);
+  FByteswapper(item.shrubsMask);
+  FByteswapper(item.unk1);
+}
+
+template <> void FByteswapper(ShrubVis &item, bool) {
+  FByteswapper(item.position);
+  FByteswapper(item.scale);
+  FByteswapper(item.r1);
+  FByteswapper(item.unk0);
+  FByteswapper(item.r2);
+  FByteswapper(item.unk1);
+}
+
+template <> void FByteswapper(Shrubs &item, bool) {
   FByteswapper(item.unk0);
   FByteswapper(item.unkOffset);
   FByteswapper(item.numInstances);
@@ -515,15 +532,16 @@ template <> void FByteswapper(PlantClusters &item, bool) {
   FByteswapper(item.unk6);
   FByteswapper(item.unk7);
   FByteswapper(item.null1);
-  FByteswapper(item.unk8);
+
+  for (auto &i : item.Instances()) {
+    FByteswapper(i);
+  }
+
+  for (auto &i : item.Vis()) {
+    FByteswapper(i);
+  }
 }
 
-template <> void FByteswapper(PlantClusterInstance &item, bool) {
-  FByteswapper(item.tm);
-  FByteswapper(item.unk0);
-  FByteswapper(item.unk1);
-  FByteswapper(item.unk2);
-}
 
 struct ClassInfo {
   uint32 id;
@@ -543,11 +561,11 @@ template <class... C> auto RegisterClasses() {
 }
 
 static const std::vector<ClassInfo> FIXUPS[]{
-    RegisterClasses<
-        MobyV1, PrimitiveV1, TieV1, TiePrimitiveV1, TieInstanceV1, RegionMesh,
-        DirectionalLightmapTextureV1, TextureV1, BlendmapTextureV1, MaterialV1,
-        ShrubPrimitive, Shrub, ShrubInstance, Foliage, FoliageSpritePositions,
-        FoliageInstance, NavmeshPositions, NavmeshPositions2, PlantPrimitive>(),
+    RegisterClasses<MobyV1, PrimitiveV1, TieV1, TiePrimitiveV1, TieInstanceV1,
+                    RegionMesh, DirectionalLightmapTextureV1, TextureV1,
+                    BlendmapTextureV1, MaterialV1, Shrub, Shrubs, Foliage,
+                    FoliageSpritePositions, FoliageInstance, NavmeshPositions,
+                    NavmeshPositions2, Detail, DetailInstance, DetailCluster>(),
     RegisterClasses<MaterialV1_5, Texture, MaterialResourceNameLookup, MobyV1,
                     PrimitiveV2, TiePrimitiveV2, HighmipTextureData,
                     LightmapTexture, ShadowmapTexture, TieV1_5, TieInstanceV2,

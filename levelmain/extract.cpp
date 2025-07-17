@@ -15,6 +15,7 @@
     along with this program.If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include "glm/gtx/quaternion.hpp"
 #include "insomnia/insomnia.hpp"
 #include "insomnia/internal/vertex.hpp"
 #include "nlohmann/json.hpp"
@@ -361,13 +362,10 @@ struct AttributeMul : AttributeCodec {
   Vector4A16 mul;
 };
 
-std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
-                                BinReaderRef_e stream,
-                                IGHWTOCIteratorConst<MaterialV1> materials,
-                                const Texture *textures) {
-  IMGLTF main;
-
+void MobyToGltf(const MobyV1 &moby, IMGLTF &main, BinReaderRef_e stream,
+                std::map<uint16, uint16> &materialRemaps, int32 rootNode = -1) {
   const Skeleton *skeleton = moby.skeleton;
+  size_t startNode = main.nodes.size();
 
   for (uint32 i = 0; i < skeleton->numBones; i++) {
     gltf::Node &glNode = main.nodes.emplace_back();
@@ -376,9 +374,14 @@ std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
 
     if (int16 parentIndex = skeleton->bones[i].parentIndex;
         parentIndex == int16(i)) {
-      main.scenes.front().nodes.emplace_back(i);
+      if (rootNode < 0) {
+        main.scenes.front().nodes.emplace_back(startNode + i);
+      } else {
+        main.nodes.at(rootNode).children.emplace_back(startNode + i);
+      }
     } else {
-      main.nodes.at(parentIndex).children.emplace_back(i);
+      main.nodes.at(startNode + parentIndex)
+          .children.emplace_back(startNode + i);
       es::Matrix44 ptm(skeleton->tms1[parentIndex]);
       tm = ptm * tm;
     }
@@ -425,7 +428,7 @@ std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
     ibms.resize(joints.size());
 
     for (auto &[jid, idx] : joints) {
-      skn.joints[idx] = jid;
+      skn.joints[idx] = startNode + jid;
       es::Matrix44 ibm = skeleton->tms1[jid];
       ibm.r4() *= YARD_TO_M;
       ibm.r1().w = 0;
@@ -486,19 +489,25 @@ std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
 
   AttributeMul attributeMul{moby.meshScale * 0x7fff};
 
-  std::map<uint16, uint16> materialRemaps;
-
   for (uint32 i = 0; i < numMeshes; i++) {
     const MeshV1 &mesh = moby.meshes[i];
     if (mesh.numPrimitives == 0 || !mesh.primitives) {
       continue;
     }
 
-    main.scenes.front().nodes.emplace_back(main.nodes.size());
+    if (rootNode < 0) {
+      main.scenes.front().nodes.emplace_back(main.nodes.size());
+    } else {
+      main.nodes.at(rootNode).children.emplace_back(main.nodes.size());
+    }
+
     gltf::Node &glNode = main.nodes.emplace_back();
     glNode.mesh = main.meshes.size();
-    glNode.skin = 0;
-    glNode.name = "Mesh_" + std::to_string(i);
+    glNode.skin = main.skins.size() - 1;
+    if (rootNode > -1) {
+      glNode.name = "Moby_" + std::to_string(moby.mobyId) + "_";
+    }
+    glNode.name.append("Mesh_" + std::to_string(i));
     gltf::Mesh &glMesh = main.meshes.emplace_back();
 
     for (uint32 p = 0; p < mesh.numPrimitives; p++) {
@@ -590,6 +599,16 @@ std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
       glPrim.indices = main.SaveIndices(idx.data(), idx.size()).accessorIndex;
     }
   }
+}
+
+std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
+                                BinReaderRef_e stream,
+                                IGHWTOCIteratorConst<MaterialV1> materials,
+                                const Texture *textures) {
+  IMGLTF main;
+  main.QuantizeMesh(false);
+  std::map<uint16, uint16> materialRemaps;
+  MobyToGltf(moby, main, stream, materialRemaps);
 
   std::set<TextureKey> textureRemaps;
   MakeMaterials(ctx, main, materialRemaps, materials, textures,
@@ -738,28 +757,28 @@ void TieToGltf(const TieV1 &tie, IMGLTF &level,
   }
 }
 
-void ShrubToGltf(const Shrub &shrub, IMGLTF &level,
-                 const LevelIndexBuffer &idxBuffer,
-                 const LevelVertexBuffer &vtxBuffer,
-                 IGHWTOCIteratorConst<ShrubInstance> shrubInstances,
-                 uint32 index, std::map<uint16, uint16> &materialRemaps) {
+void DetailToGltf(const DetailCluster &detailCluster, IMGLTF &level,
+                  const LevelIndexBuffer &idxBuffer,
+                  const LevelVertexBuffer &vtxBuffer,
+                  IGHWTOCIteratorConst<DetailInstance> detailInstances,
+                  uint32 index, std::map<uint16, uint16> &materialRemaps) {
   const uint16 *indexBuffer = &idxBuffer.data;
   const char *vertexBuffer = &vtxBuffer.data;
 
   level.scenes.front().nodes.emplace_back(level.nodes.size());
   gltf::Node &glNode = level.nodes.emplace_back();
   glNode.mesh = level.meshes.size();
-  glNode.name = "Shrub_" + std::to_string(index);
+  glNode.name = "Detail_" + std::to_string(index);
   gltf::Mesh &glMesh = level.meshes.emplace_back();
 
-  AttributeMul attributeMul{shrub.meshScale / 0x1000};
-
-  for (uint32 p = 0; p < shrub.numPrimitives; p++) {
-    const ShrubPrimitive &prim = shrub.primitives[p];
+  for (uint32 p = 0; p < detailCluster.numPrimitives; p++) {
+    const Detail &prim = detailCluster.primitives[p];
     gltf::Primitive &glPrim = glMesh.primitives.emplace_back();
     glPrim.material =
         materialRemaps.try_emplace(prim.materialIndex, materialRemaps.size())
             .first->second;
+
+    AttributeMul attributeMul{prim.meshScale * 0x7fff};
 
     const uint16 *indices = indexBuffer + prim.indexOffset;
     const Vertex0 *vertices = reinterpret_cast<const Vertex0 *>(
@@ -803,8 +822,8 @@ void ShrubToGltf(const Shrub &shrub, IMGLTF &level,
 
   std::vector<es::Matrix44> tms;
 
-  for (auto &inst : shrubInstances) {
-    if (inst.shrub == &shrub) {
+  for (auto &inst : detailInstances) {
+    if (inst.cluster == &detailCluster) {
       es::Matrix44 tm(inst.tm);
       tm.r4() *= YARD_TO_M;
       tm.r1().w = 0;
@@ -1210,62 +1229,205 @@ void ExtractTextures(AppContext *ctx, std::string path,
   }
 }
 
-void PlantsToGltf(const PlantPrimitive &prim, IMGLTF &level,
+void ShrubsToGltf(const Shrubs &shrubInstances,
+                  const IGHWTOCIteratorConst<Shrub> shrubs, IMGLTF &level,
                   const LevelIndexBuffer &idxBuffer,
                   const LevelVertexBuffer &vtxBuffer,
-                  // IGHWTOCIteratorConst<FoliageInstance> instances,
-                  std::map<uint16, uint16> &materialRemaps, uint32 index) {
-  const uint16 *indices = &idxBuffer.data + prim.indexOffset;
-  std::vector<uint16> idx(indices, indices + prim.numIndices);
-  for (uint16 &i : idx) {
-    FByteswapper(i);
+                  std::map<uint16, uint16> &materialRemaps) {
+
+  std::vector<Vector> posByShrub[16];
+  std::vector<SVector4> rotByShrub[16];
+  std::vector<float> scaleByShrub[16];
+
+  for (auto &inst : shrubInstances.Instances()) {
+    uint8 localId = 0;
+    for (uint8 i = 0; i < 16; i++) {
+      if (inst.shrubsMask & (0x8000 >> i)) {
+        auto localRange = inst.localRanges[localId++];
+        for (uint8 l = 0; l < localRange.count; l++) {
+          auto &vis = shrubInstances.Vis()[inst.visOffset + localRange.offset];
+          posByShrub[15 - i].emplace_back(vis.position * YARD_TO_M);
+          es::Matrix44 tm;
+          tm.r1() = vis.r1;
+          tm.r2() = vis.r2;
+          tm.r3() = tm.r1().Cross(tm.r2());
+          Vector4A16 val(tm.ToQuat());
+          val.Normalize() *= Vector4A16(-0x7fff, -0x7fff, -0x7fff, 0x7fff);
+          val = Vector4A16(_mm_round_ps(val._data, _MM_ROUND_NEAREST));
+          rotByShrub[15 - i].emplace_back(val.Convert<int16>());
+          scaleByShrub[15 - i].emplace_back(vis.scale);
+        }
+      }
+    }
+
+    assert(localId < 5);
   }
 
-  level.scenes.front().nodes.emplace_back(level.nodes.size());
-  auto &glNode = level.nodes.emplace_back();
-  glNode.mesh = level.meshes.size();
-  glNode.name = "plant_" + std::to_string(index);
-  auto &glMesh = level.meshes.emplace_back();
-  auto &glPrim = glMesh.primitives.emplace_back();
-  auto outI = level.SaveIndices(idx.data(), idx.size());
-  const uint32 numVertices = outI.maxIndex + 1;
-  glPrim.indices = outI.accessorIndex;
+  for (uint32 index = 0; auto &shrub : shrubs) {
+    const uint16 *indices = &idxBuffer.data + shrub.indexOffset;
+    std::vector<uint16> idx(indices, indices + shrub.numIndices);
+    for (uint16 &i : idx) {
+      FByteswapper(i);
+    }
 
-  glPrim.material =
-      materialRemaps.try_emplace(prim.materialIndex, materialRemaps.size())
-          .first->second;
+    level.scenes.front().nodes.emplace_back(level.nodes.size());
+    auto &glNode = level.nodes.emplace_back();
+    glNode.mesh = level.meshes.size();
+    glNode.name = "Shrub_" + std::to_string(index);
+    auto &glMesh = level.meshes.emplace_back();
+    auto &glPrim = glMesh.primitives.emplace_back();
+    auto outI = level.SaveIndices(idx.data(), idx.size());
+    const uint32 numVertices = outI.maxIndex + 1;
+    glPrim.indices = outI.accessorIndex;
 
-  const PlantVertex *vertices = reinterpret_cast<const PlantVertex *>(
-      &vtxBuffer.data + prim.vertexBufferOffset);
-  std::vector<PlantVertex> vtx0(vertices, vertices + numVertices);
+    glPrim.material =
+        materialRemaps.try_emplace(shrub.materialIndex, materialRemaps.size())
+            .first->second;
 
-  for (auto &v : vtx0) {
-    FByteswapper(v);
+    const PlantVertex *vertices = reinterpret_cast<const PlantVertex *>(
+        &vtxBuffer.data + shrub.vertexBufferOffset);
+    std::vector<PlantVertex> vtx0(vertices, vertices + numVertices);
+
+    for (auto &v : vtx0) {
+      FByteswapper(v);
+    }
+
+    AttributeMul attributeMul(YARD_TO_M);
+
+    Attribute attrs[]{
+        {
+            .type = uni::DataType::R16G16B16A16,
+            .format = uni::FormatType::FLOAT,
+            .usage = AttributeType::Position,
+            .customCodec = &attributeMul,
+        },
+        {
+            .type = uni::DataType::R8G8B8A8,
+            .format = uni::FormatType::UNORM,
+            .usage = AttributeType::VertexColor,
+        },
+        {
+            .type = uni::DataType::R16G16,
+            .format = uni::FormatType::FLOAT,
+            .usage = AttributeType::TextureCoordiante,
+        },
+    };
+
+    glPrim.attributes = level.SaveVertices(vtx0.data(), vtx0.size(), attrs,
+                                           sizeof(PlantVertex));
+
+    {
+      auto &str = level.GetTranslations();
+      auto [accPos, accPosIndex] = level.NewAccessor(str, 4);
+      accPos.type = gltf::Accessor::Type::Vec3;
+      accPos.componentType = gltf::Accessor::ComponentType::Float;
+      accPos.count = posByShrub[index].size();
+
+      auto [accRot, accRotIndex] = level.NewAccessor(str, 4, 12);
+      accRot.type = gltf::Accessor::Type::Vec4;
+      accRot.componentType = gltf::Accessor::ComponentType::Short;
+      accRot.normalized = true;
+      accRot.count = accPos.count;
+
+      for (uint32 idx = 0; auto &p : posByShrub[index]) {
+        str.wr.Write(p);
+        str.wr.Write(rotByShrub[index].at(idx++));
+      }
+
+      auto &attrs =
+          glNode
+              .GetExtensionsAndExtras()["extensions"]["EXT_mesh_gpu_instancing"]
+                                       ["attributes"];
+
+      attrs["TRANSLATION"] = accPosIndex;
+      attrs["ROTATION"] = accRotIndex;
+    }
+
+    {
+      auto &str = level.GetScales();
+      auto [accScale, accScaleIndex] = level.NewAccessor(str, 4);
+      accScale.type = gltf::Accessor::Type::Vec3;
+      accScale.componentType = gltf::Accessor::ComponentType::Float;
+      accScale.count = scaleByShrub[index].size();
+
+      for (auto &p : scaleByShrub[index]) {
+        str.wr.Write<Vector>(p);
+      }
+
+      auto &attrs =
+          glNode
+              .GetExtensionsAndExtras()["extensions"]["EXT_mesh_gpu_instancing"]
+                                       ["attributes"];
+      attrs["SCALE"] = accScaleIndex;
+    }
+
+    index++;
   }
+}
 
-  AttributeMul attributeMul(YARD_TO_M);
-
-  Attribute attrs[]{
-      {
-          .type = uni::DataType::R16G16B16A16,
-          .format = uni::FormatType::FLOAT,
-          .usage = AttributeType::Position,
-          .customCodec = &attributeMul,
-      },
-      {
-          .type = uni::DataType::R8G8B8A8,
-          .format = uni::FormatType::UNORM,
-          .usage = AttributeType::VertexColor,
-      },
-      {
-          .type = uni::DataType::R16G16,
-          .format = uni::FormatType::FLOAT,
-          .usage = AttributeType::TextureCoordiante,
-      },
+void EmbedMobys(IMGLTF &level, BinReaderRef_e txRd,
+                std::map<uint16, uint16> &materialRemaps, std::istream &gpStr,
+                std::set<uint16> &usedMobys,
+                IGHWTOCIteratorConst<MobyV1> mobys) {
+  IGHW gameplayFile;
+  gameplayFile.FromStream(gpStr, Version::RFOM);
+  IGHWTOCIteratorConst<Gameplay> gameplay;
+  CatchClasses(gameplayFile, gameplay);
+  struct RT {
+    Vector pos;
+    SVector4 rot;
   };
+  std::map<uint16, std::vector<RT>> mobyInstances;
 
-  glPrim.attributes =
-      level.SaveVertices(vtx0.data(), vtx0.size(), attrs, sizeof(PlantVertex));
+  for (auto &m : gameplay.at(0).instances->mobys) {
+    glm::quat qt(glm::vec3(m.rotataion.x, m.rotataion.y, m.rotataion.z));
+    Vector4A16 quat(qt.x, qt.y, qt.z, qt.w);
+    quat = Vector4A16(_mm_round_ps(quat._data, _MM_ROUND_NEAREST));
+    RT rt{
+        m.position * YARD_TO_M,
+        quat.Convert<int16>(),
+    };
+
+    mobyInstances[m.mobyClassIndex].emplace_back(rt);
+  }
+
+  for (auto &[mid, tms] : mobyInstances) {
+    for (const MobyV1 &m : mobys) {
+      if (m.mobyId == mid) {
+        usedMobys.emplace(m.mobyId);
+        const size_t rootNode = level.nodes.size();
+        level.scenes.front().nodes.emplace_back(rootNode);
+        level.nodes.emplace_back();
+        MobyToGltf(m, level, txRd, materialRemaps, rootNode);
+
+        auto &glNode = level.nodes.at(rootNode);
+        glNode.name = "Moby_" + std::to_string(mid);
+
+        auto &str = level.GetTranslations();
+        auto [accPos, accPosIndex] = level.NewAccessor(str, 4);
+        accPos.type = gltf::Accessor::Type::Vec3;
+        accPos.componentType = gltf::Accessor::ComponentType::Float;
+        accPos.count = tms.size();
+
+        auto [accRot, accRotIndex] = level.NewAccessor(str, 4, 12);
+        accRot.type = gltf::Accessor::Type::Vec4;
+        accRot.componentType = gltf::Accessor::ComponentType::Short;
+        accRot.normalized = true;
+        accRot.count = accPos.count;
+
+        for (auto &p : tms) {
+          str.wr.Write(p);
+        }
+
+        auto &attrs = glNode.GetExtensionsAndExtras()["extensions"]
+                                                     ["EXT_mesh_gpu_instancing"]
+                                                     ["attributes"];
+
+        attrs["TRANSLATION"] = accPosIndex;
+        attrs["ROTATION"] = accRotIndex;
+      }
+    }
+  }
 }
 
 void AppProcessFile(AppContext *ctx) {
@@ -1282,11 +1444,12 @@ void AppProcessFile(AppContext *ctx) {
   IGHWTOCIteratorConst<TextureV1> textures;
   IGHWTOCIteratorConst<BlendmapTextureV1> blendMaps;
   IGHWTOCIteratorConst<MaterialV1> materials;
-  IGHWTOCIteratorConst<Shrub> shrubs;
-  IGHWTOCIteratorConst<ShrubInstance> shrubInstances;
+  IGHWTOCIteratorConst<DetailCluster> detailClusters;
+  IGHWTOCIteratorConst<DetailInstance> detailInstances;
   IGHWTOCIteratorConst<Foliage> foliages;
   IGHWTOCIteratorConst<FoliageInstance> foliageInstances;
-  IGHWTOCIteratorConst<PlantPrimitive> plantMeshes;
+  IGHWTOCIteratorConst<Shrubs> shrubInstances;
+  IGHWTOCIteratorConst<Shrub> shrubs;
   auto txStr = ctx->RequestFile(workFolder + "ps3leveltexs.dat");
   auto vtxStr = ctx->RequestFile(workFolder + "ps3levelverts.dat");
   IGHW buffers;
@@ -1295,20 +1458,27 @@ void AppProcessFile(AppContext *ctx) {
   IGHWTOCIteratorConst<LevelIndexBuffer> indices;
   CatchClasses(buffers, verts, indices);
   CatchClasses(main, mobys, ties, tieInstances, regionMeshes, lightmaps,
-               textures, blendMaps, materials, shrubs, shrubInstances, foliages,
-               foliageInstances, plantMeshes);
+               textures, blendMaps, materials, detailClusters, detailInstances,
+               foliages, foliageInstances, shrubs, shrubInstances);
   BinReaderRef_e txRd(*txStr.Get());
   txRd.SwapEndian(true);
 
-  std::set<TextureKey> totalTextures;
+  AppContextStream gpStr;
+  /*try {
+    gpStr = ctx->RequestFile(workFolder + "ps3gameplay.dat");
+  } catch (...) {
+  }*/
 
-  for (const MobyV1 &moby : mobys) {
-    totalTextures.merge(
-        MobyToGltf(moby, ctx, txRd, materials, textures.begin()));
-  }
+  std::set<uint16> usedMobys;
+  std::set<TextureKey> totalTextures;
 
   {
     IMGLTF level;
+    level.QuantizeMesh(false);
+    level.extensionsRequired.emplace_back("EXT_mesh_gpu_instancing");
+    level.extensionsRequired.emplace_back("KHR_materials_specular");
+    level.extensionsUsed.emplace_back("EXT_mesh_gpu_instancing");
+    level.extensionsUsed.emplace_back("KHR_materials_specular");
     std::map<uint16, uint16> materialRemaps;
     std::map<uint16, uint16> foliageRemaps;
 
@@ -1320,9 +1490,18 @@ void AppProcessFile(AppContext *ctx) {
     RegionToGltf(regionMeshes, level, indices.at(0), verts.at(0),
                  materialRemaps);
 
-    for (size_t tieIdx = 0; const Shrub &item : shrubs) {
-      ShrubToGltf(item, level, indices.at(0), verts.at(0), shrubInstances,
-                  tieIdx++, materialRemaps);
+    for (size_t tieIdx = 0; const DetailCluster &item : detailClusters) {
+      DetailToGltf(item, level, indices.at(0), verts.at(0), detailInstances,
+                   tieIdx++, materialRemaps);
+    }
+
+    if (shrubInstances.Valid()) {
+      ShrubsToGltf(shrubInstances.at(0), shrubs, level, indices.at(0),
+                   verts.at(0), materialRemaps);
+    }
+
+    if (gpStr) {
+      EmbedMobys(level, txRd, materialRemaps, *gpStr.Get(), usedMobys, mobys);
     }
 
     std::set<TextureKey> textureRemaps;
@@ -1341,25 +1520,12 @@ void AppProcessFile(AppContext *ctx) {
     level.FinishAndSave(ctx->NewFile(workFolder + "level.glb").str, "");
   }
 
-  {
-    IMGLTF plants;
-    std::map<uint16, uint16> materialRemaps;
-
-    for (size_t index = 0; auto &p : plantMeshes) {
-      PlantsToGltf(p, plants, indices.at(0), verts.at(0), materialRemaps,
-                   index++);
+  for (const MobyV1 &moby : mobys) {
+    if (usedMobys.contains(moby.mobyId)) {
+      continue;
     }
-
-    std::set<TextureKey> textureRemaps;
-    MakeMaterials(ctx, plants, materialRemaps, materials, textures.begin(),
-                  txRd.BaseStream(), textureRemaps);
-    totalTextures.merge(textureRemaps);
-
-    for (auto &m : plants.materials) {
-      m.doubleSided = true;
-    }
-
-    plants.FinishAndSave(ctx->NewFile(workFolder + "plants.glb").str, "");
+    totalTextures.merge(
+        MobyToGltf(moby, ctx, txRd, materials, textures.begin()));
   }
 
   ExtractTextures(ctx, "lightmap_",

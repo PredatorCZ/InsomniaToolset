@@ -16,9 +16,9 @@
 */
 
 #pragma once
+#include "classes/detail.hpp"
 #include "classes/foliage.hpp"
 #include "classes/moby.hpp"
-#include "classes/plant.hpp"
 #include "classes/region.hpp"
 #include "classes/resource.hpp"
 #include "classes/shrub.hpp"

@@ -39,7 +39,7 @@ struct PrimitiveV2 : CoreClass {
   uint32 unk3;
 };
 
-struct Mesh : CoreClass {
+struct MeshV2 : CoreClass {
   static constexpr uint32 ID = 0xd700;
 
   es::PointerX86<PrimitiveV2> primitives;
@@ -77,7 +77,7 @@ struct MobyV2 : CoreClass {
   uint16 numBones;
   uint16 unk13;
   uint32 null00;
-  es::PointerX86<Mesh> meshes;
+  es::PointerX86<MeshV2> meshes;
   es::PointerX86<Skeleton> skeleton;
   es::PointerX86<char> unkData0;
   es::PointerX86<char> meshTransform;
