@@ -1,5 +1,5 @@
 /*  InsomniaLib
-    Copyright(C) 2021-2024 Lukas Cone
+    Copyright(C) 2021-2025 Lukas Cone
 
     This program is free software : you can redistribute it and / or modify
     it under the terms of the GNU General Public License as published by
@@ -43,12 +43,14 @@ template <uint32 id_> void FByteswapper(ResourceLookup<id_> &input, bool) {
 
 template <> void FByteswapper(IGHWHeader &input, bool) {
   FByteswapper(input.id);
-  FByteswapper(input.numFixups);
-  FByteswapper(input.numToc);
-  FByteswapper(input.tocEnd);
   FByteswapper(input.versionMajor);
   FByteswapper(input.versionMinor);
-  FByteswapper(input.dataEnd);
+  FByteswapper(input.numToc);
+  FByteswapper(input.tocEnd);
+  if (input.versionMajor) {
+    FByteswapper(input.numFixups);
+    FByteswapper(input.dataEnd);
+  }
 }
 
 template <> void FByteswapper(IGHWTOC &input, bool way) {
@@ -542,6 +544,63 @@ template <> void FByteswapper(Shrubs &item, bool) {
   }
 }
 
+template <> void FByteswapper(GameplayMoby &item, bool) {
+  FByteswapper(item.classIndex);
+  FByteswapper(item.unk);
+  FByteswapper(item.null);
+};
+
+template <> void FByteswapper(GameplayInstanceMoby &item, bool) {
+  FByteswapper(item.unk0);
+  FByteswapper(item.unk1);
+  FByteswapper(item.position);
+  FByteswapper(item.rotataion);
+  FByteswapper(item.null1);
+  FByteswapper(item.unk2);
+  FByteswapper(item.null2);
+  FByteswapper(item.embedSize);
+  FByteswapper(item.unk3);
+  FByteswapper(item.mobyClassIndex);
+  FByteswapper(item.null3);
+};
+
+template <>
+void FByteswapper(GameplayInstancesGroup<GameplayInstanceMoby> &item, bool) {
+  FByteswapper(item.numItems);
+  FByteswapper(item.null);
+
+  for (auto &m : item) {
+    FByteswapper(m);
+  }
+};
+
+template <> void FByteswapper(GameplayInstancesGroup<char> &item, bool) {
+  FByteswapper(item.numItems);
+  FByteswapper(item.null);
+};
+
+template <> void FByteswapper(GameplayInstances &item, bool) {
+  FByteswapper(item.mobys);
+  FByteswapper(item.other);
+  FByteswapper(item.unk2);
+  FByteswapper(item.unk3);
+};
+
+template <> void FByteswapper(Gameplay &item, bool) {
+  FByteswapper(item.numMobys);
+  FByteswapper(item.null0);
+  FByteswapper(item.unk1);
+  FByteswapper(item.unk2);
+  FByteswapper(item.unk3);
+  FByteswapper(item.unk5);
+  FByteswapper(item.unk6);
+
+  for (auto &m : item.Mobys()) {
+    FByteswapper(m);
+  }
+
+  FByteswapper(*item.instances);
+};
 
 struct ClassInfo {
   uint32 id;
@@ -565,7 +624,8 @@ static const std::vector<ClassInfo> FIXUPS[]{
                     RegionMesh, DirectionalLightmapTextureV1, TextureV1,
                     BlendmapTextureV1, MaterialV1, Shrub, Shrubs, Foliage,
                     FoliageSpritePositions, FoliageInstance, NavmeshPositions,
-                    NavmeshPositions2, Detail, DetailInstance, DetailCluster>(),
+                    NavmeshPositions2, Detail, DetailInstance, DetailCluster,
+                    Gameplay>(),
     RegisterClasses<MaterialV1_5, Texture, MaterialResourceNameLookup, MobyV1,
                     PrimitiveV2, TiePrimitiveV2, HighmipTextureData,
                     LightmapTexture, ShadowmapTexture, TieV1_5, TieInstanceV2,
@@ -595,9 +655,40 @@ void IGHW::FromStream(BinReaderRef_e rd, Version version) {
     throw es::InvalidHeaderError();
   }
 
+  if (hdr.versionMajor == 0) {
+    hdr.dataEnd = rd.GetSize();
+    hdr.numFixups = 0;
+    tocOffset = 0x10;
+  }
+
   rd.ReadContainer(buffer, hdr.dataEnd);
 
-  if (hdr.numFixups) {
+  FByteswapper(*Header());
+
+  for (auto &item : *this) {
+    FByteswapper(item, false);
+    item.data.Fixup(buffer.data());
+
+    if (hdr.versionMajor == 0 && item.id != -1U) {
+      item.size = item.count.Count();
+    }
+  }
+
+  if (hdr.versionMajor == 0) {
+    auto *lastItem = std::prev(end());
+    uint32 *fixupsBegin = reinterpret_cast<uint32 *>(
+        reinterpret_cast<char *>(lastItem->data.Get()) +
+        lastItem->count.Count());
+    uint32 *fixupsEnd = reinterpret_cast<uint32 *>(buffer.data() + hdr.dataEnd);
+    for (uint32 *f = fixupsBegin; f < fixupsEnd; f++) {
+      FByteswapper(*f);
+
+      *f &= 0xfffffff;
+      auto ptr = reinterpret_cast<es::PointerX86<uint32> *>(&buffer[0] + *f);
+      FByteswapper(*ptr);
+      ptr->Fixup(buffer.data());
+    }
+  } else if (hdr.numFixups) {
     std::vector<uint32> fixups;
     rd.ReadContainer(fixups, hdr.numFixups);
 
@@ -609,13 +700,9 @@ void IGHW::FromStream(BinReaderRef_e rd, Version version) {
     }
   }
 
-  FByteswapper(*Header());
-
   std::set<void *> swapped;
 
   for (auto &item : *this) {
-    FByteswapper(item, false);
-    item.data.Fixup(buffer.data());
     auto &fixups = FIXUPS[int(version)];
     auto found =
         std::find_if(fixups.begin(), fixups.end(), [&](const ClassInfo &cls) {

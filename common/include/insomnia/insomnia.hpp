@@ -1,5 +1,5 @@
 /*  InsomniaLib
-    Copyright(C) 2021-2024 Lukas Cone
+    Copyright(C) 2021-2025 Lukas Cone
 
     This program is free software : you can redistribute it and / or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 #pragma once
 #include "classes/detail.hpp"
 #include "classes/foliage.hpp"
+#include "classes/gameplay.hpp"
 #include "classes/moby.hpp"
 #include "classes/region.hpp"
 #include "classes/resource.hpp"
@@ -121,11 +122,10 @@ struct IGHW {
     return reinterpret_cast<const IGHWHeader *>(buffer.data());
   }
   auto begin() const {
-    return reinterpret_cast<const IGHWTOC *>(buffer.data() +
-                                             sizeof(IGHWHeader));
+    return reinterpret_cast<const IGHWTOC *>(buffer.data() + tocOffset);
   }
   auto end() const {
-    return reinterpret_cast<const IGHWTOC *>(buffer.data() + Header()->tocEnd);
+    return reinterpret_cast<const IGHWTOC *>(begin() + Header()->numToc);
   }
   auto begin() {
     return const_cast<IGHWTOC *>(static_cast<const IGHW *>(this)->begin());
@@ -137,6 +137,7 @@ struct IGHW {
 private:
   auto Header() { return reinterpret_cast<IGHWHeader *>(buffer.data()); }
   std::string buffer;
+  uint32 tocOffset = sizeof(IGHWHeader);
 };
 
 template <class... C, class CB>
