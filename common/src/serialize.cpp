@@ -115,6 +115,11 @@ template <> void FByteswapper(MaterialResourceNameLookup &input, bool) {
   FByteswapper(input.hash);
 }
 
+template <> void FByteswapper(MaterialResourceNameLookupV2 &input, bool) {
+  FByteswapper(input.mapHashes);
+  FByteswapper(input.hash);
+}
+
 template <> void FByteswapper(ShaderResourceLookup &input, bool) {
   FByteswapper(input.hash);
 }
@@ -296,6 +301,34 @@ template <> void FByteswapper(TiePrimitiveV2 &input, bool) {
 template <> void FByteswapper(TieV2 &input, bool) {
   FByteswapper(input.unk00);
   FByteswapper(input.numPrimitives);
+  FByteswapper(input.unk01);
+  FByteswapper(input.unk02);
+  FByteswapper(input.unk13);
+  FByteswapper(input.unk14);
+  FByteswapper(input.meshScale);
+  FByteswapper(input.unk03);
+  FByteswapper(input.unk04);
+}
+
+template <> void FByteswapper(TiePrimitiveV3 &input, bool) {
+  FByteswapper(input.indexOffset);
+  FByteswapper(input.vertexOffset0);
+  FByteswapper(input.vertexOffset1);
+  FByteswapper(input.numVertices);
+  FByteswapper(input.unk000);
+  FByteswapper(input.numIndices);
+  FByteswapper(input.unk0);
+  FByteswapper(input.unk08);
+  FByteswapper(input.unk1);
+  FByteswapper(input.materialIndex);
+  FByteswapper(input.unk06);
+  FByteswapper(input.unk07);
+  FByteswapper(input.unk2);
+  FByteswapper(input.unk3);
+}
+
+template <> void FByteswapper(TieV3 &input, bool) {
+  FByteswapper(input.unk00);
   FByteswapper(input.unk01);
   FByteswapper(input.unk02);
   FByteswapper(input.unk13);
@@ -637,7 +670,15 @@ static const std::vector<ClassInfo> FIXUPS[]{
         TextureResource, Material, Texture, MaterialResourceNameLookup,
         ShaderResourceLookup, ZoneHash, ZoneNameLookup, ZoneLightmap,
         ZoneShadowMap, ZoneDataLookup, ZoneData2Lookup, ZoneData, ZoneMap,
-        MobyV2, PrimitiveV2, TieV2, TiePrimitiveV2>(),
+        MobyV2, PrimitiveV2, TieV2, TiePrimitiveV2, RegionMeshV2>(),
+    RegisterClasses<
+        ResourceLighting, ResourceZones, ResourceAnimsets, ResourceMobys,
+        ResourceShrubs, ResourceTies, ResourceFoliages, ResourceCubemap,
+        ResourceShaders, ResourceHighmips, ResourceTextures, ResourceCinematics,
+        TextureResource, Material, Texture, MaterialResourceNameLookupV2,
+        ShaderResourceLookup, ZoneHash, ZoneNameLookup, ZoneLightmap,
+        ZoneShadowMap, ZoneDataLookup, ZoneData2Lookup, ZoneData, ZoneMap,
+        MobyV2, PrimitiveV2, TieV3, TiePrimitiveV3, RegionMeshV2>(),
 };
 
 void IGHW::FromStream(BinReaderRef_e rd, Version version) {

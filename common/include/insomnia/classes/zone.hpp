@@ -88,3 +88,13 @@ struct RegionMeshV2 : CoreClass {
   uint32 unk4;
   float unk5[4];
 };
+
+struct RegionVertexBuffer : CoreClass {
+  static constexpr uint32 ID = 0x6000;
+  char data;
+};
+
+struct RegionIndexBuffer : CoreClass {
+  static constexpr uint32 ID = 0x6100;
+  uint16 data;
+};

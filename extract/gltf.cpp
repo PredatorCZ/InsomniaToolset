@@ -402,3 +402,74 @@ void TieToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
 
   main.FinishAndSave(ctx->NewFile(mobyPath.ChangeExtension2("glb")).str, "");
 }
+
+void RegionToGltf(IGHW &ighw, GLTFModel &level,
+                  std::map<uint16, uint16> &materialRemaps) {
+  IGHWTOCIteratorConst<RegionMeshV2> meshes;
+  IGHWTOCIteratorConst<RegionVertexBuffer> vtxBuffer;
+  IGHWTOCIteratorConst<RegionIndexBuffer> idxBuffer;
+
+  const uint16 *indexBuffer = &idxBuffer.at(0).data;
+  const char *vertexBuffer = &vtxBuffer.at(0).data;
+
+  level.scenes.front().nodes.emplace_back(level.nodes.size());
+  gltf::Node &glNode = level.nodes.emplace_back();
+  glNode.mesh = level.meshes.size();
+  glNode.name = "RegionMesh";
+  gltf::Mesh &glMesh = level.meshes.emplace_back();
+
+  for (const RegionMeshV2 &item : meshes) {
+    gltf::Primitive &glPrim = glMesh.primitives.emplace_back();
+    glPrim.material =
+        materialRemaps.try_emplace(item.materialIndex, materialRemaps.size())
+            .first->second;
+
+    const uint16 *indices = indexBuffer + item.indexOffset;
+    const RegionVertexV2 *vertices = reinterpret_cast<const RegionVertexV2 *>(
+        vertexBuffer + item.vertexOffset);
+
+    std::vector<RegionVertexV2> vtx0(vertices, vertices + item.numVerties);
+
+    for (auto &v : vtx0) {
+      FByteswapper(v);
+    }
+
+    AttributeMad attributeMad;
+    attributeMad.mul = Vector4A16(0x7fff) / 0x100;
+    attributeMad.add = item.position / 0x100;
+
+    Attribute attrs[]{
+        {
+            .type = uni::DataType::R16G16B16A16,
+            .format = uni::FormatType::NORM,
+            .usage = AttributeType::Position,
+            .customCodec = &attributeMad,
+        },
+        {
+            .type = uni::DataType::R16G16,
+            .format = uni::FormatType::FLOAT,
+            .usage = AttributeType::TextureCoordiante,
+        },
+        {
+            .type = uni::DataType::R16G16,
+            .format = uni::FormatType::FLOAT,
+            .usage = AttributeType::TextureCoordiante,
+        },
+        {
+            .type = uni::DataType::R11G11B10,
+            .format = uni::FormatType::NORM,
+            .usage = AttributeType::Normal,
+        },
+    };
+
+    glPrim.attributes = level.SaveVertices(vtx0.data(), vtx0.size(), attrs,
+                                           sizeof(RegionVertexV2));
+
+    std::vector<uint16> idx(indices, indices + item.numIndices);
+    for (uint16 &i : idx) {
+      FByteswapper(i);
+    }
+
+    glPrim.indices = level.SaveIndices(idx.data(), idx.size()).accessorIndex;
+  }
+}

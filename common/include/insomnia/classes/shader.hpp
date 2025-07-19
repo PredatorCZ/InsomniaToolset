@@ -213,6 +213,15 @@ struct MaterialResourceNameLookup : CoreClass {
   es::PointerX86<char> mapLookupPaths[4];
 };
 
+struct MaterialResourceNameLookupV2 : CoreClass {
+  static constexpr uint32 ID = 0x5d00;
+  Hash hash;
+  es::PointerX86<char> lookupPath;
+  uint32 null;
+  uint32 mapHashes[6];
+  es::PointerX86<char> mapLookupPaths[6];
+};
+
 struct ShaderResourceLookup : CoreClass {
   static constexpr uint32 ID = 0x5600;
   Hash hash;

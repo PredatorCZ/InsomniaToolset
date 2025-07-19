@@ -15,10 +15,10 @@
     along with this program.If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "spike/reflect/reflector.hpp"
-#include "spike/reflect/reflector_xml.hpp"
 #include "insomnia/insomnia.hpp"
 #include "pugixml.hpp"
+#include "spike/reflect/reflector.hpp"
+#include "spike/reflect/reflector_xml.hpp"
 
 namespace aggregators_ {
 struct Texture {
@@ -115,6 +115,7 @@ namespace aggregators {
 void Material(IGHW &main, pugi::xml_node node) {
   IGHWTOCIteratorConst<Texture> textures;
   IGHWTOCIteratorConst<MaterialResourceNameLookup> lookups;
+  IGHWTOCIteratorConst<MaterialResourceNameLookupV2> lookupsV2;
   IGHWTOCIteratorConst<TextureResource> textureResources;
   IGHWTOCIteratorConst<::Material> materials;
 
@@ -124,7 +125,11 @@ void Material(IGHW &main, pugi::xml_node node) {
       textures = i.Iter<Texture>();
       break;
     case MaterialResourceNameLookup::ID:
-      lookups = i.Iter<MaterialResourceNameLookup>();
+      try {
+        lookups = i.Iter<MaterialResourceNameLookup>();
+      } catch (const std::bad_cast &) {
+        lookupsV2 = i.Iter<MaterialResourceNameLookupV2>();
+      }
       break;
     case TextureResource::ID:
       textureResources = i.Iter<TextureResource>();
@@ -143,6 +148,10 @@ void Material(IGHW &main, pugi::xml_node node) {
 
     if (lookups.Valid()) {
       auto &curLookup = lookups.at(0);
+      mat.hash[0] = curLookup.hash.part1;
+      mat.hash[1] = curLookup.hash.part2;
+    } else if (lookupsV2.Valid()) {
+      auto &curLookup = lookupsV2.at(0);
       mat.hash[0] = curLookup.hash.part1;
       mat.hash[1] = curLookup.hash.part2;
     }
@@ -170,6 +179,20 @@ void Material(IGHW &main, pugi::xml_node node) {
       if (lookups.Valid())
         [&] {
           for (auto &l : lookups) {
+            size_t curMapIndex = 0;
+            for (auto h : l.mapHashes) {
+              if (h == tex.hash) {
+                tex.path = l.mapLookupPaths[curMapIndex];
+                return;
+              }
+
+              curMapIndex++;
+            }
+          }
+        }();
+      else if (lookupsV2.Valid())
+        [&] {
+          for (auto &l : lookupsV2) {
             size_t curMapIndex = 0;
             for (auto h : l.mapHashes) {
               if (h == tex.hash) {

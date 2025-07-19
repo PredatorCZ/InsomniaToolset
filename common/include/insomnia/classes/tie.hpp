@@ -58,6 +58,49 @@ struct TieV2 : CoreClass {
   uint32 unk04[6];
 };
 
+struct TiePrimitiveV3 : CoreClass {
+  static constexpr uint32 ID = 0x3300;
+
+  uint32 indexOffset;
+  uint16 vertexOffset0;
+  uint16 vertexOffset1;
+  uint16 numVertices;
+  uint16 unk000;
+  uint8 unk00;
+  uint8 unk01;
+  uint8 unk02;
+  uint8 unk03;
+  uint32 numIndices;
+  uint32 unk0[3];
+  uint16 unk08;
+  uint16 unk1[3];
+  uint16 unk06;
+  uint16 materialIndex;
+  uint32 unk07;
+  float unk2[3];
+  uint32 unk3;
+};
+
+
+struct TieV3 : CoreClass {
+  static constexpr uint32 ID = 0x3400;
+
+  es::PointerX86<TiePrimitiveV3> primitives;
+  es::PointerX86<char> unkData1;
+  uint32 unk00;
+  uint8 unk05[3];
+  uint8 numPrimitives;
+  uint32 unk01[2];
+  uint32 unk02;
+  uint16 unk13;
+  uint16 unk14;
+  Vector meshScale;
+  float unk03[14];
+  es::PointerX86<char> selfPath;
+  uint32 unk04[6];
+};
+
+
 struct TieVertexBuffer : CoreClass {
   static constexpr uint32 ID = 0x3000;
   char data;
