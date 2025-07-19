@@ -20,7 +20,6 @@ Currently there are some missing features:
 
 - detail textures
 - scene lighting data (per vertex lightmaps, texel directional lightmaps)
-- plant instances (unique meshes are stored in `plants.glb`)
 - moby instances (individual mobys are converted to GLTF)
 - Water(?)
 - Skybox
