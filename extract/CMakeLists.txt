@@ -10,7 +10,7 @@ build_target(
   VERSION
   1
   SOURCES
-  extract.cpp
+  extract_v2.cpp
   gltf.cpp
   LINKS
   gltf-interface
