@@ -128,6 +128,22 @@ template <> void FByteswapper(ZoneHash &input, bool) {
   FByteswapper(input.hash);
 }
 
+template <> void FByteswapper(ZoneTieLookup &input, bool) {
+  FByteswapper(input.hash);
+}
+
+template <> void FByteswapper(ZoneShaderLookup &input, bool) {
+  FByteswapper(input.hash);
+}
+
+template <> void FByteswapper(ZoneFoliageLookup &input, bool) {
+  FByteswapper(input.hash);
+}
+
+template <> void FByteswapper(ZoneShrubLookup &input, bool) {
+  FByteswapper(input.hash);
+}
+
 template <> void FByteswapper(ZoneNameLookup &, bool) {}
 
 template <> void FByteswapper(ZoneLightmap &input, bool way) {
@@ -144,15 +160,6 @@ template <> void FByteswapper(ZoneDataLookup &input, bool) {
 
 template <> void FByteswapper(ZoneData2Lookup &input, bool) {
   FByteswapper(input.hash);
-}
-
-template <> void FByteswapper(ZoneData &input, bool) {
-  FByteswapper(input.transform);
-  FByteswapper(input.unk0);
-  FByteswapper(input.mainDataOffset);
-  FByteswapper(input.lightMapId);
-  FByteswapper(input.unk1);
-  FByteswapper(input.unk);
 }
 
 template <> void FByteswapper(ZoneMap &input, bool way) {
@@ -507,12 +514,25 @@ template <> void FByteswapper(TieV1_5 &input, bool) {
   FByteswapper(input.unk04);
 }
 
-template <> void FByteswapper(TieInstanceV2 &input, bool) {
+template <> void FByteswapper(TieInstanceV1_5 &input, bool) {
   FByteswapper(input.tm);
   FByteswapper(input.unk0);
   FByteswapper(input.unk5);
   FByteswapper(input.unk2);
   FByteswapper(input.unk3);
+}
+
+template <> void FByteswapper(TieInstanceV2 &input, bool) {
+  FByteswapper(input.tm);
+  FByteswapper(input.unk0);
+  FByteswapper(input.tieIndex);
+  FByteswapper(input.mainDataOffset);
+  FByteswapper(input.null0);
+  FByteswapper(input.lightMapId);
+  FByteswapper(input.null1);
+  FByteswapper(input.unk2);
+  FByteswapper(input.unk3);
+  FByteswapper(input.unk4);
 }
 
 template <> void FByteswapper(RegionMeshV2 &input, bool) {
@@ -540,20 +560,30 @@ template <> void FByteswapper(Shrub &item, bool) {
   FByteswapper(item.unk2);
 }
 
-template <> void FByteswapper(ShrubInstance &item, bool) {
+template <> void FByteswapper(ShrubCluster &item, bool) {
   FByteswapper(item.tm);
   FByteswapper(item.visOffset);
   FByteswapper(item.shrubsMask);
   FByteswapper(item.unk1);
 }
 
-template <> void FByteswapper(ShrubVis &item, bool) {
+template <> void FByteswapper(ShrubInstance &item, bool) {
   FByteswapper(item.position);
   FByteswapper(item.scale);
   FByteswapper(item.r1);
   FByteswapper(item.unk0);
   FByteswapper(item.r2);
   FByteswapper(item.unk1);
+}
+
+template <> void FByteswapper(ShrubV2Instance &item, bool) {
+  FByteswapper(item.position);
+  FByteswapper(item.scale);
+  FByteswapper(item.r1);
+  FByteswapper(item.unk0);
+  FByteswapper(item.r2);
+  FByteswapper(item.unk1);
+  FByteswapper(item.shrubIndex);
 }
 
 template <> void FByteswapper(Shrubs &item, bool) {
@@ -633,7 +663,62 @@ template <> void FByteswapper(Gameplay &item, bool) {
   }
 
   FByteswapper(*item.instances);
-};
+}
+
+template <> void FByteswapper(UnkInstanceV2 &item, bool) {
+  FByteswapper(item.unk0);
+  FByteswapper(item.bounds);
+  FByteswapper(item.tm);
+  FByteswapper(item.unk);
+}
+
+template <> void FByteswapper(ShrubV2 &item, bool) {
+  FByteswapper(item.vertexBufferOffset);
+  FByteswapper(item.indexOffset);
+  FByteswapper(item.numIndices);
+  FByteswapper(item.unk0);
+  FByteswapper(item.unk1);
+  FByteswapper(item.unk2);
+  FByteswapper(item.unk3);
+  FByteswapper(item.boundSphere);
+  FByteswapper(item.bounds);
+  FByteswapper(item.unk4);
+}
+
+template <> void FByteswapper(FoliageV2Instance &item, bool) {
+  FByteswapper(item.tm);
+  FByteswapper(item.unk0);
+  FByteswapper(item.unk1);
+  FByteswapper(item.foliageIndex);
+  FByteswapper(item.unk2);
+  FByteswapper(item.unk3);
+  FByteswapper(item.unk4);
+}
+
+template <> void FByteswapper(FoliageV2Unk1 &item, bool) {
+  FByteswapper(item.unk);
+  FByteswapper(item.tm);
+}
+
+template <> void FByteswapper(SpriteV2LodRange &item, bool) {
+  FByteswapper(item.cornerBegin);
+  FByteswapper(item.cornerEnd);
+  FByteswapper(item.unk0);
+}
+
+template <> void FByteswapper(FoliageV2 &item, bool) {
+  FByteswapper(item.null0);
+  FByteswapper(item.unk0);
+  FByteswapper(item.null1);
+  FByteswapper(item.unk1);
+  FByteswapper(item.unk2);
+  FByteswapper(item.numUsedLods);
+  FByteswapper(item.unk3);
+  FByteswapper(item.spriteVertexOffset);
+  FByteswapper(item.null3);
+  FByteswapper(item.spriteLodRanges);
+  FByteswapper(item.null2);
+}
 
 struct ClassInfo {
   uint32 id;
@@ -661,7 +746,7 @@ static const std::vector<ClassInfo> FIXUPS[]{
                     Gameplay>(),
     RegisterClasses<MaterialV1_5, Texture, MaterialResourceNameLookup, MobyV1,
                     PrimitiveV2, TiePrimitiveV2, HighmipTextureData,
-                    LightmapTexture, ShadowmapTexture, TieV1_5, TieInstanceV2,
+                    LightmapTexture, ShadowmapTexture, TieV1_5, TieInstanceV1_5,
                     RegionMeshV2>(),
     RegisterClasses<
         ResourceLighting, ResourceZones, ResourceAnimsets, ResourceMobys,
@@ -669,16 +754,19 @@ static const std::vector<ClassInfo> FIXUPS[]{
         ResourceShaders, ResourceHighmips, ResourceTextures, ResourceCinematics,
         TextureResource, Material, Texture, MaterialResourceNameLookup,
         ShaderResourceLookup, ZoneHash, ZoneNameLookup, ZoneLightmap,
-        ZoneShadowMap, ZoneDataLookup, ZoneData2Lookup, ZoneData, ZoneMap,
-        MobyV2, PrimitiveV2, TieV2, TiePrimitiveV2, RegionMeshV2>(),
+        ZoneShadowMap, ZoneDataLookup, ZoneData2Lookup, ZoneMap, MobyV2,
+        PrimitiveV2, TieV2, TiePrimitiveV2, RegionMeshV2, TieInstanceV2,
+        UnkInstanceV2, ZoneTieLookup, ZoneShaderLookup, ShrubV2,
+        ZoneShrubLookup, ShrubV2Instance, FoliageV2Instance, FoliageV2Unk1,
+        FoliageV2, ZoneFoliageLookup>(),
     RegisterClasses<
         ResourceLighting, ResourceZones, ResourceAnimsets, ResourceMobys,
         ResourceShrubs, ResourceTies, ResourceFoliages, ResourceCubemap,
         ResourceShaders, ResourceHighmips, ResourceTextures, ResourceCinematics,
         TextureResource, Material, Texture, MaterialResourceNameLookupV2,
         ShaderResourceLookup, ZoneHash, ZoneNameLookup, ZoneLightmap,
-        ZoneShadowMap, ZoneDataLookup, ZoneData2Lookup, ZoneData, ZoneMap,
-        MobyV2, PrimitiveV2, TieV3, TiePrimitiveV3, RegionMeshV2>(),
+        ZoneShadowMap, ZoneDataLookup, ZoneData2Lookup, ZoneMap, MobyV2,
+        PrimitiveV2, TieV3, TiePrimitiveV3, RegionMeshV2>(),
 };
 
 void IGHW::FromStream(BinReaderRef_e rd, Version version) {

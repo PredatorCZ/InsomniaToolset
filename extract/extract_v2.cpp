@@ -249,8 +249,7 @@ void ExtractTexture(AppExtractContext *ctx, std::string path,
       tile = TexelTile::Morton;
       return TexelInputFormatType::RG8;
     default:
-      PrintError("Invalid texture format: " +
-                 std::to_string(int(info.format)));
+      PrintError("Invalid texture format: " + std::to_string(int(info.format)));
       break;
     }
 
@@ -316,18 +315,22 @@ void ExtractTextures(AppContext *ctx, const TextureRegistry &reg,
   }
 }
 
+void RegionToGltf(IGHW &ighw, AppContext *ctx,
+                  IGHWTOCIteratorConst<ResourceShaders> &shaders,
+                  AppContextStream &shdStream,
+                  IGHWTOCIteratorConst<ResourceTies> ties,
+                  IGHWTOCIteratorConst<ResourceShrubs> shrubs,
+                  IGHWTOCIteratorConst<ResourceFoliages> foliages,
+                  AFileInfo zonePath);
+
 void ExtractZones(AppContext *ctx,
+                  IGHWTOCIteratorConst<ResourceShaders> shaders,
+                  IGHWTOCIteratorConst<ResourceTies> ties,
+                  IGHWTOCIteratorConst<ResourceShrubs> shrubs,
+                  IGHWTOCIteratorConst<ResourceFoliages> foliages,
                   IGHWTOCIteratorConst<ResourceLighting> ligtmaps,
                   IGHWTOCIteratorConst<ResourceZones> zones) {
-  AppContextStream regionStream = std::move(
-      ctx->FindFile(std::string(ctx->workingFile.GetFolder()), "^region.dat$"));
-  IGHW region;
-  region.FromStream(*regionStream.Get(), Version::V2);
-  IGHWTOCIteratorConst<ZoneHash> zoneHashes;
-  IGHWTOCIteratorConst<ZoneNameLookup> zoneNames;
-
-  CatchClasses(region, zoneHashes, zoneNames);
-
+  auto shdStream = ctx->RequestFile("shaders.dat");
   auto streamZones = ctx->RequestFile("zones.dat");
   auto streamLightMaps = ctx->RequestFile("lighting.dat");
   BinReaderRef_e zonesData(*streamZones.Get());
@@ -336,19 +339,18 @@ void ExtractZones(AppContext *ctx,
   auto ectx = ctx->ExtractContext();
 
   for (auto &item : zones) {
-    auto foundZoneHash =
-        std::find(zoneHashes.begin(), zoneHashes.end(), item.hash);
     std::string workingPath = "zones/";
+    snprintf(uniBuffer, sizeof(uniBuffer), "%.8" PRIX32 ".%.8" PRIX32,
+             item.hash.part1, item.hash.part2);
+    workingPath.append(uniBuffer);
 
-    if (es::IsEnd(zoneHashes, foundZoneHash)) {
-      snprintf(uniBuffer, sizeof(uniBuffer), "%.8" PRIX32 ".%.8" PRIX32,
-               item.hash.part1, item.hash.part2);
-      workingPath.append(uniBuffer);
-    } else {
-      workingPath.append(
-          zoneNames.at(std::distance(zoneHashes.begin(), foundZoneHash)).name);
-    }
     std::string fileName = workingPath + ".zone.irb";
+    streamZones->seekg(item.offset);
+    IGHW main;
+    main.FromStream(*streamZones.Get(), Version::V2);
+    RegionToGltf(
+        main, ctx, shaders, shdStream, ties, shrubs, foliages,
+        AFileInfo(std::string(ctx->workingFile.GetFolder()) + fileName));
     ectx->NewFile(fileName);
 
     auto restream = [&](auto instream, size_t size) {
@@ -380,12 +382,12 @@ void ExtractZones(AppContext *ctx,
     IGHWTOCIteratorConst<ZoneLightmap> zoneLightmaps;
     IGHWTOCIteratorConst<ZoneShadowMap> zoneShadowmaps;
     IGHWTOCIteratorConst<ZoneDataLookup> zoneDataLookups;
-    IGHWTOCIteratorConst<ZoneData> zoneData;
+    IGHWTOCIteratorConst<TieInstanceV2> tieInstances;
     IGHWTOCIteratorConst<ZoneMap> zoneMaps;
     IGHWTOCIteratorConst<TextureResource> zoneMapRes;
 
     CatchClasses(curZone, zoneLightmaps, zoneShadowmaps, zoneDataLookups,
-                 zoneData, zoneMaps, zoneMapRes);
+                 tieInstances, zoneMaps, zoneMapRes);
     size_t curZoneMap = 0;
 
     for (auto &map : zoneMaps) {
@@ -400,7 +402,7 @@ void ExtractZones(AppContext *ctx,
                      nullptr, &res);
     }
 
-    for (auto &zone0 : zoneData) {
+    for (auto &zone0 : tieInstances) {
       if (zone0.lightMapId == -1) {
         continue;
       }
@@ -430,6 +432,24 @@ void ExtractZones(AppContext *ctx,
                        nullptr, &res);
       }
     }
+  }
+}
+
+void ShrubToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
+                 AppContext *ctx, AppContextStream &shdStream);
+
+void ExtractShrubs(AppContext *ctx,
+                   IGHWTOCIteratorConst<ResourceShaders> &shaders,
+                   const IGHWTOCIteratorConst<ResourceShrubs> &shrubs) {
+  auto stream = ctx->RequestFile("shrubs.dat");
+  auto shdStream = ctx->RequestFile("shaders.dat");
+  IGHW main;
+
+  for (auto &subItem : shrubs) {
+    BinReaderRef_e subRd(*stream.Get());
+    subRd.SetRelativeOrigin(subItem.offset);
+    main.FromStream(*stream.Get(), Version::V2);
+    ShrubToGltf(shaders, main, ctx, shdStream);
   }
 }
 
@@ -519,16 +539,41 @@ void TieToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
 
 void ExtractTies(AppContext *ctx,
                  IGHWTOCIteratorConst<ResourceShaders> &shaders,
-                 const IGHWTOCIteratorConst<ResourceTies> &mobys) {
+                 const IGHWTOCIteratorConst<ResourceTies> &ties) {
   auto stream = ctx->RequestFile("ties.dat");
   auto shdStream = ctx->RequestFile("shaders.dat");
   IGHW main;
 
-  for (auto &subItem : mobys) {
+  for (auto &subItem : ties) {
     BinReaderRef_e subRd(*stream.Get());
     subRd.SetRelativeOrigin(subItem.offset);
     main.FromStream(*stream.Get(), Version::V2);
     TieToGltf(shaders, main, ctx, shdStream);
+  }
+}
+
+void FoliageToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
+                   AppContext *ctx, AppContextStream &shdStream,
+                   AFileInfo path);
+
+void ExtractFoliages(AppContext *ctx,
+                     IGHWTOCIteratorConst<ResourceShaders> &shaders,
+                     const IGHWTOCIteratorConst<ResourceFoliages> &foliages) {
+  auto stream = ctx->RequestFile("foliages.dat");
+  auto shdStream = ctx->RequestFile("shaders.dat");
+  IGHW main;
+
+  for (auto &subItem : foliages) {
+    BinReaderRef_e subRd(*stream.Get());
+    subRd.SetRelativeOrigin(subItem.offset);
+    main.FromStream(*stream.Get(), Version::V2);
+    char tmpBuff[0x40];
+    snprintf(tmpBuff, sizeof(tmpBuff),
+             "foliage/%.8" PRIX32 ".%.8" PRIX32 ".irb", subItem.hash.part1,
+             subItem.hash.part2);
+    FoliageToGltf(
+        shaders, main, ctx, shdStream,
+        AFileInfo(std::string(ctx->workingFile.GetFolder()) + tmpBuff));
   }
 }
 
@@ -562,6 +607,9 @@ void AppProcessFile(AppContext *ctx) {
   IGHWTOCIteratorConst<ResourceAnimsets> animsets;
   IGHWTOCIteratorConst<ResourceMobys> mobys;
   IGHWTOCIteratorConst<ResourceShaders> shaders;
+  IGHWTOCIteratorConst<ResourceTies> ties;
+  IGHWTOCIteratorConst<ResourceShrubs> shrubs;
+  IGHWTOCIteratorConst<ResourceFoliages> foliages;
 
   auto ExtractWithLookup = [&](auto lookupId, auto iter, auto name) {
     std::string reqName = name + std::string(".dat");
@@ -609,28 +657,10 @@ void AppProcessFile(AppContext *ctx) {
         ExtractWithLookup(ResourceMobyPathLookupId, mobys, "mobys");
       }
       break;
-    case ResourceTies::ID:
-      if (settings.extractFilter[Filter::Ties]) {
-        ExtractTies(ctx, shaders, item.Iter<ResourceTies>());
-        ExtractWithLookup(ResourceTiePathLookupId, item.Iter<ResourceTies>(),
-                          "ties");
-      }
-      break;
-    case ResourceShrubs::ID:
-      if (settings.extractFilter[Filter::Shrubs])
-        ExtractWithLookup(ResourceShrubPathLookupId,
-                          item.Iter<ResourceShrubs>(), "shrubs");
-      break;
     case ResourceCinematics::ID:
       if (settings.extractFilter[Filter::Cinematics]) {
         ExtractWithLookup(ResourceCinematicPathLookupId,
                           item.Iter<ResourceCinematics>(), "cinematics");
-      }
-      break;
-
-    case ResourceFoliages::ID:
-      if (settings.extractFilter[Filter::Foliages]) {
-        ExtractSet(item.Iter<ResourceFoliages>(), "foliages");
       }
       break;
 
@@ -646,7 +676,22 @@ void AppProcessFile(AppContext *ctx) {
   };
 
   CatchClassesLambda(main, ExtractCommon, textures, highMips, zones, lightmaps,
-                     animsets, shaders);
+                     animsets, shaders, ties, shrubs, foliages);
+
+  if (settings.extractFilter[Filter::Shrubs]) {
+    ExtractShrubs(ctx, shaders, shrubs);
+    ExtractWithLookup(ResourceShrubPathLookupId, shrubs, "shrubs");
+  }
+
+  if (settings.extractFilter[Filter::Foliages]) {
+    ExtractFoliages(ctx, shaders, foliages);
+    ExtractSet(foliages, "foliages");
+  }
+
+  if (settings.extractFilter[Filter::Ties]) {
+    ExtractTies(ctx, shaders, ties);
+    ExtractWithLookup(ResourceTiePathLookupId, ties, "ties");
+  }
 
   if (settings.extractFilter[Filter::Shaders]) {
     ExtractShaders(ctx, shaders, textureRegistry);
@@ -661,6 +706,6 @@ void AppProcessFile(AppContext *ctx) {
   }
 
   if (settings.extractFilter[Filter::Zones]) {
-    ExtractZones(ctx, lightmaps, zones);
+    ExtractZones(ctx, shaders, ties, shrubs, foliages, lightmaps, zones);
   }
 }

@@ -1284,9 +1284,9 @@ void ShrubsToGltf(const Shrubs &shrubInstances,
         materialRemaps.try_emplace(shrub.materialIndex, materialRemaps.size())
             .first->second;
 
-    const PlantVertex *vertices = reinterpret_cast<const PlantVertex *>(
+    const ShrubVertex *vertices = reinterpret_cast<const ShrubVertex *>(
         &vtxBuffer.data + shrub.vertexBufferOffset);
-    std::vector<PlantVertex> vtx0(vertices, vertices + numVertices);
+    std::vector<ShrubVertex> vtx0(vertices, vertices + numVertices);
 
     for (auto &v : vtx0) {
       FByteswapper(v);
@@ -1314,7 +1314,7 @@ void ShrubsToGltf(const Shrubs &shrubInstances,
     };
 
     glPrim.attributes = level.SaveVertices(vtx0.data(), vtx0.size(), attrs,
-                                           sizeof(PlantVertex));
+                                           sizeof(ShrubVertex));
 
     {
       auto &str = level.GetTranslations();

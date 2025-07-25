@@ -1,5 +1,5 @@
 /*  InsomniaLib
-    Copyright(C) 2021-2023 Lukas Cone
+    Copyright(C) 2021-2025 Lukas Cone
 
     This program is free software : you can redistribute it and / or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 #pragma once
 #include "insomnia/internal/base.hpp"
+#include "spike/type/matrix44.hpp"
 
 struct TiePrimitiveV2 : CoreClass {
   static constexpr uint32 ID = 0x3300;
@@ -81,7 +82,6 @@ struct TiePrimitiveV3 : CoreClass {
   uint32 unk3;
 };
 
-
 struct TieV3 : CoreClass {
   static constexpr uint32 ID = 0x3400;
 
@@ -99,7 +99,6 @@ struct TieV3 : CoreClass {
   es::PointerX86<char> selfPath;
   uint32 unk04[6];
 };
-
 
 struct TieVertexBuffer : CoreClass {
   static constexpr uint32 ID = 0x3000;
@@ -167,7 +166,7 @@ struct TieV1_5 : CoreClass {
   uint32 unk04[8];
 };
 
-struct TieInstanceV2 : CoreClass {
+struct TieInstanceV1_5 : CoreClass {
   static constexpr uint32 ID = 0x9240;
 
   es::Matrix44 tm;
@@ -177,4 +176,18 @@ struct TieInstanceV2 : CoreClass {
   uint32 unk5[2];
   float unk2[4];
   int32 unk3[4];
+};
+
+struct TieInstanceV2 : CoreClass {
+  static constexpr uint32 ID = 0x7240;
+  es::Matrix44 tm;
+  float unk0[4];
+  uint32 tieIndex;
+  uint32 mainDataOffset;
+  uint16 null0;
+  int16 lightMapId;
+  int32 null1;
+  float unk2[4];
+  int32 unk3;
+  float unk4[3];
 };

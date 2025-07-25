@@ -1,7 +1,7 @@
 #pragma once
-#include "spike/util/endian.hpp"
 #include "spike/type/float.hpp"
 #include "spike/type/vectors.hpp"
+#include "spike/util/endian.hpp"
 
 struct Vertex0 {
   int16 position[3];
@@ -51,13 +51,44 @@ struct SpriteVertex {
   uint32 unk; // prolly normal
 };
 
-struct PlantVertex {
+struct ShrubVertex {
   int16 position[4];
   UCVector4 color;
   float16 uv[2];
 };
 
-inline void FByteswapper(PlantVertex &item) {
+struct ShrubV2Vertex {
+  int16 position[4];
+  float16 uv[2];
+  uint32 unk;
+};
+
+struct FoliageV2Vertex {
+  t_Vector<float16> position;
+  int16 unk[4];
+};
+
+struct SpriteV2Vertex {
+  t_Vector2<float16> size;
+  t_Vector2<float16> uv;
+};
+
+inline void FByteswapper(SpriteV2Vertex &item) {
+  FByteswapper(item.size);
+  FByteswapper(item.uv);
+}
+
+inline void FByteswapper(FoliageV2Vertex &item) {
+  FByteswapper(item.position);
+  FByteswapper(item.unk);
+}
+
+inline void FByteswapper(ShrubV2Vertex &item) {
+  FByteswapper(item.position);
+  FByteswapper(item.uv);
+}
+
+inline void FByteswapper(ShrubVertex &item) {
   FByteswapper(item.position);
   FByteswapper(item.uv);
 }
@@ -105,4 +136,3 @@ inline void FByteswapper(BranchVertex &item) {
   FByteswapper(item.position);
   FByteswapper(item.uv);
 }
-

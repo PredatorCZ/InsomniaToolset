@@ -70,3 +70,50 @@ struct FoliageInstance : CoreClass {
   uint32 unk1[2];
   uint32 unk[4];
 };
+
+struct FoliageV2Instance : CoreClass {
+  static constexpr uint32 ID = 0x7440;
+
+  es::Matrix44 tm;
+  float unk0[20];
+  float unk1;
+  uint32 foliageIndex;
+  uint32 unk2[4];
+  float unk3;
+  uint32 unk4;
+};
+
+struct FoliageV2Unk1 : CoreClass {
+  static constexpr uint32 ID = 0xa300;
+
+  float unk[4]; // bounding sphere?
+  es::Matrix44 tm;
+};
+
+struct SpriteV2LodRange {
+  uint16 cornerBegin;
+  uint16 cornerEnd;
+  float unk0;
+};
+
+struct FoliageV2 : CoreClass {
+  static constexpr uint32 ID = 0xa200;
+
+  uint32 null0[4];
+  float unk0[4];
+  uint32 null1[4];
+  uint32 unk1[4];
+  float unk2[4];
+  uint32 numUsedLods;
+  uint32 unk3;
+  uint32 spriteVertexOffset;
+  uint32 null3;
+  SpriteV2LodRange spriteLodRanges[5];
+  uint32 null2[14];
+};
+
+struct FoliageV2Buffer : CoreClass {
+  static constexpr uint32 ID = 0xa000;
+
+  char data;
+};

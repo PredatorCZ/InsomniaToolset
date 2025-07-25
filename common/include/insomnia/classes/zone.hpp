@@ -42,19 +42,6 @@ struct ZoneMap : Texture {
   static constexpr uint32 ID = 0x5700;
 };
 
-struct ZoneData : CoreClass {
-  static const uint32 ID = 0x7240;
-  es::Matrix44 transform;
-  float unk0[4];
-  int32 null;
-  int32 mainDataOffset;
-  int16 null0;
-  int16 lightMapId;
-  int32 null1;
-  float unk1[4];
-  int32 unk[4];
-};
-
 struct RegionMesh : CoreClass {
   static constexpr uint32 ID = 0x6200;
 
@@ -97,4 +84,37 @@ struct RegionVertexBuffer : CoreClass {
 struct RegionIndexBuffer : CoreClass {
   static constexpr uint32 ID = 0x6100;
   uint16 data;
+};
+
+struct ZoneTieLookup : CoreClass {
+  static constexpr uint32 ID = 0x7200;
+  Hash hash;
+};
+
+struct ZoneCubemapLookup : CoreClass {
+  static constexpr uint32 ID = 0x72c1;
+  Hash hash;
+};
+
+struct ZoneShaderLookup : CoreClass {
+  static constexpr uint32 ID = 0x71a0;
+  Hash hash;
+};
+
+struct ZoneFoliageLookup : CoreClass {
+  static constexpr uint32 ID = 0x7400;
+  Hash hash;
+};
+
+struct ZoneShrubLookup : CoreClass {
+  static constexpr uint32 ID = 0x7500;
+  Hash hash;
+};
+
+struct UnkInstanceV2 : CoreClass {
+  static constexpr uint32 ID = 0x8c00;
+  float unk0[8];
+  Vector4A16 bounds[2];
+  es::Matrix44 tm;
+  float unk[32];
 };

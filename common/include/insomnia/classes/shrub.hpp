@@ -1,5 +1,5 @@
 /*  InsomniaLib
-    Copyright(C) 2021-2024 Lukas Cone
+    Copyright(C) 2021-2025 Lukas Cone
 
     This program is free software : you can redistribute it and / or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ struct Shrub : CoreClass {
   uint32 unk2[3];
 };
 
-struct ShrubInstance {
+struct ShrubCluster {
   struct LocalRange {
     uint8 count;
     uint8 offset;
@@ -43,7 +43,7 @@ struct ShrubInstance {
   uint16 unk1;
 };
 
-struct ShrubVis {
+struct ShrubInstance {
   Vector position;
   float scale;
   Vector r1;
@@ -68,27 +68,64 @@ struct Shrubs : CoreClass {
 
   void OpenEnded();
 
-  std::span<ShrubInstance> Instances() {
-    return {reinterpret_cast<ShrubInstance *>(reinterpret_cast<char *>(this) +
+  std::span<ShrubCluster> Instances() {
+    return {reinterpret_cast<ShrubCluster *>(reinterpret_cast<char *>(this) +
                                               instancesOffset),
             numInstances};
   }
 
-  std::span<const ShrubInstance> Instances() const {
-    return {reinterpret_cast<const ShrubInstance *>(
+  std::span<const ShrubCluster> Instances() const {
+    return {reinterpret_cast<const ShrubCluster *>(
                 reinterpret_cast<const char *>(this) + instancesOffset),
             numInstances};
   }
 
-  std::span<ShrubVis> Vis() {
-    return {reinterpret_cast<ShrubVis *>(reinterpret_cast<char *>(this) +
+  std::span<ShrubInstance> Vis() {
+    return {reinterpret_cast<ShrubInstance *>(reinterpret_cast<char *>(this) +
                                          unkOffset),
             unk0};
   }
 
-  std::span<const ShrubVis> Vis() const {
-    return {reinterpret_cast<const ShrubVis *>(
+  std::span<const ShrubInstance> Vis() const {
+    return {reinterpret_cast<const ShrubInstance *>(
                 reinterpret_cast<const char *>(this) + unkOffset),
             unk0};
   }
+};
+
+struct ShrubV2 : CoreClass {
+  static constexpr uint32 ID = 0xb100;
+
+  uint32 vertexBufferOffset;
+  uint32 indexOffset;
+  uint32 numIndices;
+  uint32 unk0;
+  float unk1[4];
+  uint32 unk2;
+  es::PointerX86<char> path;
+  uint64 unk3; // hash?
+  Vector4A16 boundSphere;
+  Vector4A16 bounds[2];
+  uint32 unk4[8];
+};
+
+struct ShrubVertexBuffer : CoreClass {
+  static constexpr uint32 ID = 0xb300;
+  char data;
+};
+
+struct ShrubIndexBuffer : CoreClass {
+  static constexpr uint32 ID = 0xb400;
+  uint16 data;
+};
+
+struct ShrubV2Instance : CoreClass {
+  static constexpr uint32 ID = 0x7540;
+  Vector position;
+  float scale;
+  Vector r1;
+  float unk0;
+  Vector r2;
+  float unk1[4];
+  uint32 shrubIndex;
 };
