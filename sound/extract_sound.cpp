@@ -23,6 +23,7 @@
 #include "spike/format/XVAG.hpp"
 #include "spike/io/binreader_stream.hpp"
 #include <algorithm>
+#include <array>
 
 std::string_view filters[]{
     "^ps3sound.dat$",
