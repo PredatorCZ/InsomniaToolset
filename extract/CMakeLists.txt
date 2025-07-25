@@ -21,3 +21,25 @@ build_target(
   "Insomnia Engine asset extract"
   START_YEAR
   2017)
+
+project(Region2GLTF)
+
+build_target(
+  NAME
+  region_to_gltf
+  TYPE
+  ESMODULE
+  VERSION
+  1
+  SOURCES
+  region_to_gltf.cpp
+  gltf.cpp
+  LINKS
+  gltf-interface
+  insomnia-interface
+  AUTHOR
+  "Lukas Cone"
+  DESCR
+  "Insomnia Engine convert region to GLTF"
+  START_YEAR
+  2025)
