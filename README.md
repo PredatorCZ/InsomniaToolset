@@ -10,7 +10,9 @@ Head to this **[Wiki](https://github.com/PredatorCZ/Spike/wiki/Spike)** for more
 <li><a href="#Extract-Assets">Extract Assets</a></li>
 <li><a href="#Extract-Effect">Extract Effect</a></li>
 <li><a href="#Extract-PSARC">Extract PSARC</a></li>
+<li><a href="#Extract-sound">Extract sound</a></li>
 <li><a href="#Levelmain-to-GLTF">Levelmain to GLTF</a></li>
+<li><a href="#Region-to-GLTF">Region to GLTF</a></li>
 </ul>
 
 ## Extract Assets
@@ -54,6 +56,14 @@ Extracts and converts textures from `vfx_system_header.dat`.
 
 Extracts psarc archives.
 
+## Extract sound
+
+### Module command: extract_sound
+
+Extracts sound files and converts them into WAV format.
+
+### Input file patterns: `^ps3sound.dat$`, `^ps3dialogue.*.dat$`, `^resident_dialogue.*.dat$`, `^resident_sound.dat$`
+
 ## Levelmain to GLTF
 
 ### Module command: levelmain_to_gltf
@@ -74,6 +84,14 @@ Textures, that were unable to be linked to GLTFs are normally extracted, however
 
 ### Input file patterns: `^ps3levelmain.dat$`
 
+## Region to GLTF
+
+### Module command: region_to_gltf
+
+Converts entire region map to GLTF.
+
+### Input file patterns: `^region.dat$`
+
 ## [Latest Release](https://github.com/PredatorCZ/InsomniaToolset/releases)
 
 ## License
@@ -81,4 +99,4 @@ Textures, that were unable to be linked to GLTFs are normally extracted, however
 This toolset is available under GPL v3 license. (See LICENSE)\
 This toolset uses following libraries:
 
-- Spike, Copyright (c) 2016-2024 Lukas Cone (Apache 2)
+- Spike, Copyright (c) 2016-2025 Lukas Cone (Apache 2)

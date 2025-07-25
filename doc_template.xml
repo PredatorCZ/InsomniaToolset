@@ -8,6 +8,10 @@ This toolset runs on Spike foundation.
 Head to this **[Wiki](https://github.com/PredatorCZ/Spike/wiki/Spike)** for more information on how to effectively use it.
 </toolset_description>
 
+<region_to_gltf name="Region to GLTF">Converts entire region map to GLTF.</region_to_gltf>
+
+<extract_sound name="Extract sound">Extracts sound files and converts them into WAV format.</extract_sound>
+
 <extract_assets name="Extract Assets">Extracts packed assets, converts textures.
 In addition, converts mobys and ties into GLTF format.</extract_assets>
 
@@ -36,5 +40,5 @@ Textures, that were unable to be linked to GLTFs are normally extracted, however
 This toolset is available under GPL v3 license. (See LICENSE)\
 This toolset uses following libraries:
 
-- Spike, Copyright (c) 2016-2024 Lukas Cone (Apache 2)
+- Spike, Copyright (c) 2016-2025 Lukas Cone (Apache 2)
 </toolset_footer>
