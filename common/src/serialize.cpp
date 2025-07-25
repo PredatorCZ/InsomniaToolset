@@ -720,6 +720,84 @@ template <> void FByteswapper(FoliageV2 &item, bool) {
   FByteswapper(item.null2);
 }
 
+template <> void FByteswapper(Sound &item, bool) {
+  FByteswapper(item.type);
+  FByteswapper(item.index);
+}
+
+template <> void FByteswapper(Sounds &item, bool) {
+  FByteswapper(item.numSounds);
+  FByteswapper(item.null);
+
+  for (uint32 i = 0; i < item.numSounds; i++) {
+    FByteswapper(item.sounds[i]);
+  }
+}
+
+template <> void FByteswapper(SoundsV2 &item, bool way) {
+  FByteswapper<Sounds>(item, way);
+}
+
+template <> void FByteswapper(SCREAMSound &item, bool) {
+  FByteswapper(item.unk01);
+  FByteswapper(item.flags);
+  FByteswapper(item.gains);
+}
+
+void Fixup(SCREAMBank &item) {
+  const char *root = reinterpret_cast<const char *>(&item);
+  FByteswapper(item.id);
+  FByteswapper(item.version);
+  FByteswapper(item.flags);
+  FByteswapper(item.null0);
+  FByteswapper(item.numSounds);
+  FByteswapper(item.numGains);
+  FByteswapper(item.unk0);
+  FByteswapper(item.sounds);
+  FByteswapper(item.gains);
+  FByteswapper(item.unk2);
+  FByteswapper(item.dataSize0);
+  FByteswapper(item.dataSize1);
+  FByteswapper(item.null2);
+  FByteswapper(item.gainData);
+  FByteswapper(item.unk1);
+  FByteswapper(item.null1);
+
+  es::FixupPointers(root, item.sounds, item.gains, item.gainData);
+
+  for (uint32 i = 0; i < item.numSounds; i++) {
+    FByteswapper(item.sounds[i]);
+    item.sounds[i].gains.FixupRelative(
+        reinterpret_cast<const char *>(item.gains.Get()));
+  }
+
+  for (uint32 i = 0; i < item.numGains; i++) {
+    FArraySwapper(item.gains[i]);
+  }
+};
+
+void Fixup(SCREAMBankHeader &item) {
+  const char *root = reinterpret_cast<const char *>(&item);
+  FByteswapper(item.version);
+  FByteswapper(item.numSections);
+
+  if (item.version == 0) {
+    return;
+  }
+
+  for (uint32 i = 0; i < item.numSections; i++) {
+    SCREAMSection &sec = item.sections[i];
+    FByteswapper(sec.data);
+    FByteswapper(sec.size);
+    sec.data.Fixup(root);
+  }
+
+  Fixup(*reinterpret_cast<SCREAMBank *>(
+      item.sections[SCREAMSection::TYPE_BANK].data.Get()));
+}
+
+template <> void FByteswapper(SoundBank &item, bool) { Fixup(item.bank); }
+
 struct ClassInfo {
   uint32 id;
   uint16 size;
@@ -743,7 +821,7 @@ static const std::vector<ClassInfo> FIXUPS[]{
                     BlendmapTextureV1, MaterialV1, Shrub, Shrubs, Foliage,
                     FoliageSpritePositions, FoliageInstance, NavmeshPositions,
                     NavmeshPositions2, Detail, DetailInstance, DetailCluster,
-                    Gameplay>(),
+                    Gameplay, Sounds, SoundBank>(),
     RegisterClasses<MaterialV1_5, Texture, MaterialResourceNameLookup, MobyV1,
                     PrimitiveV2, TiePrimitiveV2, HighmipTextureData,
                     LightmapTexture, ShadowmapTexture, TieV1_5, TieInstanceV1_5,
@@ -758,7 +836,7 @@ static const std::vector<ClassInfo> FIXUPS[]{
         PrimitiveV2, TieV2, TiePrimitiveV2, RegionMeshV2, TieInstanceV2,
         UnkInstanceV2, ZoneTieLookup, ZoneShaderLookup, ShrubV2,
         ZoneShrubLookup, ShrubV2Instance, FoliageV2Instance, FoliageV2Unk1,
-        FoliageV2, ZoneFoliageLookup>(),
+        FoliageV2, ZoneFoliageLookup, SoundsV2, SoundBank>(),
     RegisterClasses<
         ResourceLighting, ResourceZones, ResourceAnimsets, ResourceMobys,
         ResourceShrubs, ResourceTies, ResourceFoliages, ResourceCubemap,

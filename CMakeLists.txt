@@ -22,6 +22,7 @@ target_link_libraries(spike_cli insomnia-objects)
 add_spike_subdir(extract)
 add_spike_subdir(effect)
 add_spike_subdir(levelmain)
+add_spike_subdir(sound)
 
 set(TPD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/fragmented/3rd_party)
 add_spike_subdir(3rd_party/fragmented/psarc)

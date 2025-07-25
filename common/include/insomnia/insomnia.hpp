@@ -23,6 +23,7 @@
 #include "classes/region.hpp"
 #include "classes/resource.hpp"
 #include "classes/shrub.hpp"
+#include "classes/sound.hpp"
 #include "classes/tie.hpp"
 #include "classes/zone.hpp"
 #include "internal/settings.hpp"
@@ -144,7 +145,7 @@ template <class... C, class CB>
 void CatchClassesLambda(IGHW &main, CB &&callback,
                         IGHWTOCIteratorConst<C> &...classes) {
   bool catched = false;
-  auto CatchClass = [&](const IGHWTOC &toc, auto &item) {
+  [[maybe_unused]] auto CatchClass = [&](const IGHWTOC &toc, auto &item) {
     using type = typename std::remove_reference_t<decltype(item)>::value_type;
     if (toc.IsClass<type>()) {
       item = toc.Iter<type>();
