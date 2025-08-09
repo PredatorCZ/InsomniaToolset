@@ -19,6 +19,8 @@
 #include "insomnia/internal/base.hpp"
 #include "spike/type/matrix44.hpp"
 
+struct Animation;
+
 struct PrimitiveV2 : CoreClass {
   static constexpr uint32 ID = 0xdd00;
 
@@ -61,10 +63,10 @@ struct Skeleton : CoreClass {
   es::PointerX86<Bone> bones;
   es::PointerX86<es::Matrix44> tms0;
   es::PointerX86<es::Matrix44> tms1;
-  uint16 unk0;
-  uint16 unk1;
-  uint32 trsDataBuffer;
-  uint32 off2;
+  uint16 scaleShift;
+  uint16 translationShift;
+  es::PointerX86<char> spuRefPoseBuffer;
+  es::PointerX86<char> unkOffset;
 };
 
 struct MobyV2 : CoreClass {
@@ -129,14 +131,14 @@ struct MobyV1 : CoreClass {
   uint16 unk01;
   uint16 unk02;
   uint16 numBones;
-  uint16 unk03;
+  uint16 numAnimations;
   uint16 numMeshes;
   uint16 mobyId;
   uint16 null00;
   uint8 anotherSet; // bool?
   uint8 null01;
   es::PointerX86<Skeleton> skeleton;
-  es::PointerX86<char> unkData0;
+  es::PointerX86<es::PointerX86<Animation>> animations;
   es::PointerX86<MeshV1> meshes;
   es::PointerX86<char> unkData1;
   uint32 null02;

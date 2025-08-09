@@ -25,21 +25,29 @@
 #include "spike/reflect/reflector.hpp"
 #include "spike/type/flags.hpp"
 
-MAKE_ENUM(ENUMSCOPE(class Filter, Filter), EMEMBER(Mobys), EMEMBER(Ties),
-          EMEMBER(Shrubs), EMEMBER(Foliages), EMEMBER(Zones), EMEMBER(Textures),
+MAKE_ENUM(ENUMSCOPE(class ConvertFilter, ConvertFilter),
+          EMEMBER(Mobys, "To GLTF."), EMEMBER(Ties, "To GLTF."),
+          EMEMBER(Shrubs, "To GLTF."), EMEMBER(Foliages, "To GLTF."),
+          EMEMBER(Zones, "To GLTF."),
+          EMEMBER(Textures, "To output format in texel settings."),
+          EMEMBER(Shaders, "To XML."),
+          EMEMBER(Animsets, "Embed them into Mobys."));
+
+MAKE_ENUM(ENUMSCOPE(class ExtractFilter, ExtractFilter), EMEMBER(Mobys),
+          EMEMBER(Ties), EMEMBER(Shrubs), EMEMBER(Foliages), EMEMBER(Zones),
           EMEMBER(Shaders), EMEMBER(Cinematics), EMEMBER(Animsets),
           EMEMBER(Cubemaps))
 
 static struct AssetExtract : ReflectorBase<AssetExtract> {
-  bool convertShaders = true;
-  es::Flags<Filter> extractFilter{0xffffu};
+  es::Flags<ExtractFilter> extractFilter;
+  es::Flags<ConvertFilter> convertFilter{0xffffu};
 } settings;
 
 REFLECT(CLASS(AssetExtract),
-        MEMBERNAME(convertShaders, "convert-shaders", "s",
-                   ReflDesc{"Convert shaders into XML format."}),
         MEMBERNAME(extractFilter, "extract-filter", "e",
-                   ReflDesc{"Select groups that should be extracted."}), );
+                   ReflDesc{"Select groups that should be extracted."}),
+        MEMBERNAME(convertFilter, "convert-filter", "c",
+                   ReflDesc{"Select groups that should be converted."}));
 
 std::string_view filters[]{
     "^assetlookup.dat$",
@@ -161,7 +169,7 @@ void ExtractShaders(AppContext *ctx,
     if (shaderPath) {
       std::string path = "shaders/";
       path.append(shaderPath).append(".shd");
-      if (settings.convertShaders) {
+      if (settings.convertFilter[ConvertFilter::Shaders]) {
         path.append(".xml");
       }
       ectx->NewFile(path);
@@ -169,11 +177,12 @@ void ExtractShaders(AppContext *ctx,
       char tmpBuff[0x40];
       snprintf(tmpBuff, sizeof(tmpBuff),
                "shaders/%.8" PRIX32 ".%.8" PRIX32 ".shd%s", item.hash.part1,
-               item.hash.part2, settings.convertShaders ? ".xml" : "");
+               item.hash.part2,
+               settings.convertFilter[ConvertFilter::Shaders] ? ".xml" : "");
       ectx->NewFile(tmpBuff);
     }
 
-    if (settings.convertShaders) {
+    if (settings.convertFilter[ConvertFilter::Shaders]) {
       pugi::xml_document doc;
       aggregators::Material(main, doc);
       XMLContextWritter xmlwr(ectx);
@@ -351,28 +360,31 @@ void ExtractZones(AppContext *ctx,
     RegionToGltf(
         main, ctx, shaders, shdStream, ties, shrubs, foliages,
         AFileInfo(std::string(ctx->workingFile.GetFolder()) + fileName));
-    ectx->NewFile(fileName);
+    if (settings.extractFilter[ExtractFilter::Zones]) {
+      ectx->NewFile(fileName);
 
-    auto restream = [&](auto instream, size_t size) {
-      const size_t numBlocks = size / sizeof(uniBuffer);
-      const size_t restBytes = size % sizeof(uniBuffer);
+      auto restream = [&](auto instream, size_t size) {
+        const size_t numBlocks = size / sizeof(uniBuffer);
+        const size_t restBytes = size % sizeof(uniBuffer);
 
-      for (size_t i = 0; i < numBlocks; i++) {
-        instream->read(uniBuffer, sizeof(uniBuffer));
-        ectx->SendData({uniBuffer, sizeof(uniBuffer)});
-      }
+        for (size_t i = 0; i < numBlocks; i++) {
+          instream->read(uniBuffer, sizeof(uniBuffer));
+          ectx->SendData({uniBuffer, sizeof(uniBuffer)});
+        }
 
-      if (restBytes) {
-        instream->read(uniBuffer, restBytes);
-        ectx->SendData({uniBuffer, restBytes});
-      }
-    };
+        if (restBytes) {
+          instream->read(uniBuffer, restBytes);
+          ectx->SendData({uniBuffer, restBytes});
+        }
+      };
 
-    streamZones->seekg(item.offset);
-    restream(streamZones.Get(), item.size);
+      streamZones->seekg(item.offset);
+      restream(streamZones.Get(), item.size);
+    }
 
     auto foundLM = std::find(ligtmaps.begin(), ligtmaps.end(), item.hash);
-    if (es::IsEnd(ligtmaps, foundLM)) {
+    if (es::IsEnd(ligtmaps, foundLM) ||
+        !settings.convertFilter[ConvertFilter::Textures]) {
       continue;
     }
 
@@ -517,11 +529,13 @@ void ExtractAnimSets(AppContext *ctx, IGHWTOCIteratorConst<ResourceMobys> mobys,
 }
 
 void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
-                AppContext *ctx, AppContextStream &shdSteram);
+                AppContext *ctx, AppContextStream &shdStream,
+                IGHWTOCIteratorConst<ResourceAnimsets> &anims);
 
 void ExtractMobys(AppContext *ctx,
                   IGHWTOCIteratorConst<ResourceShaders> &shaders,
-                  IGHWTOCIteratorConst<ResourceMobys> &mobys) {
+                  IGHWTOCIteratorConst<ResourceMobys> &mobys,
+                  IGHWTOCIteratorConst<ResourceAnimsets> &anims) {
   auto stream = ctx->RequestFile("mobys.dat");
   auto shdStream = ctx->RequestFile("shaders.dat");
   IGHW main;
@@ -530,7 +544,7 @@ void ExtractMobys(AppContext *ctx,
     BinReaderRef_e subRd(*stream.Get());
     subRd.SetRelativeOrigin(subItem.offset);
     main.FromStream(*stream.Get(), Version::V2);
-    MobyToGltf(shaders, main, ctx, shdStream);
+    MobyToGltf(shaders, main, ctx, shdStream, anims);
   }
 }
 
@@ -650,22 +664,15 @@ void AppProcessFile(AppContext *ctx) {
 
   auto ExtractCommon = [&](const IGHWTOC &item) {
     switch (item.id) {
-    case ResourceMobys::ID:
-      mobys = item.Iter<ResourceMobys>();
-      if (settings.extractFilter[Filter::Mobys]) {
-        ExtractMobys(ctx, shaders, mobys);
-        ExtractWithLookup(ResourceMobyPathLookupId, mobys, "mobys");
-      }
-      break;
     case ResourceCinematics::ID:
-      if (settings.extractFilter[Filter::Cinematics]) {
+      if (settings.extractFilter[ExtractFilter::Cinematics]) {
         ExtractWithLookup(ResourceCinematicPathLookupId,
                           item.Iter<ResourceCinematics>(), "cinematics");
       }
       break;
 
     case ResourceCubemap::ID:
-      if (settings.extractFilter[Filter::Cubemaps]) {
+      if (settings.extractFilter[ExtractFilter::Cubemaps]) {
         ExtractSet(item.Iter<ResourceCubemap>(), "cubemaps");
       }
       break;
@@ -676,36 +683,50 @@ void AppProcessFile(AppContext *ctx) {
   };
 
   CatchClassesLambda(main, ExtractCommon, textures, highMips, zones, lightmaps,
-                     animsets, shaders, ties, shrubs, foliages);
+                     animsets, shaders, ties, shrubs, foliages, mobys);
 
-  if (settings.extractFilter[Filter::Shrubs]) {
-    ExtractShrubs(ctx, shaders, shrubs);
+  if (settings.extractFilter[ExtractFilter::Mobys]) {
+    ExtractWithLookup(ResourceMobyPathLookupId, mobys, "mobys");
+  }
+  if (settings.extractFilter[ExtractFilter::Shrubs]) {
     ExtractWithLookup(ResourceShrubPathLookupId, shrubs, "shrubs");
   }
-
-  if (settings.extractFilter[Filter::Foliages]) {
-    ExtractFoliages(ctx, shaders, foliages);
-    ExtractSet(foliages, "foliages");
-  }
-
-  if (settings.extractFilter[Filter::Ties]) {
-    ExtractTies(ctx, shaders, ties);
+  if (settings.extractFilter[ExtractFilter::Ties]) {
     ExtractWithLookup(ResourceTiePathLookupId, ties, "ties");
   }
-
-  if (settings.extractFilter[Filter::Shaders]) {
-    ExtractShaders(ctx, shaders, textureRegistry);
+  if (settings.extractFilter[ExtractFilter::Foliages]) {
+    ExtractSet(foliages, "foliages");
   }
-
-  if (settings.extractFilter[Filter::Animsets]) {
+  if (settings.extractFilter[ExtractFilter::Animsets]) {
     ExtractAnimSets(ctx, mobys, animsets);
   }
 
-  if (settings.extractFilter[Filter::Textures]) {
-    ExtractTextures(ctx, textureRegistry, textures, highMips);
+  if (settings.convertFilter[ConvertFilter::Shaders] ||
+      settings.convertFilter[ConvertFilter::Textures] ||
+      settings.extractFilter[ExtractFilter::Shaders]) {
+    ExtractShaders(ctx, shaders, textureRegistry);
   }
 
-  if (settings.extractFilter[Filter::Zones]) {
+  if (settings.convertFilter[ConvertFilter::Mobys]) {
+    IGHWTOCIteratorConst<ResourceAnimsets> dummy;
+    ExtractMobys(ctx, shaders, mobys,
+                 settings.convertFilter[ConvertFilter::Animsets] ? animsets
+                                                                 : dummy);
+  }
+  if (settings.convertFilter[ConvertFilter::Shrubs]) {
+    ExtractShrubs(ctx, shaders, shrubs);
+  }
+  if (settings.convertFilter[ConvertFilter::Foliages]) {
+    ExtractFoliages(ctx, shaders, foliages);
+  }
+  if (settings.convertFilter[ConvertFilter::Ties]) {
+    ExtractTies(ctx, shaders, ties);
+  }
+  if (settings.convertFilter[ConvertFilter::Textures]) {
+    ExtractTextures(ctx, textureRegistry, textures, highMips);
+  }
+  if (settings.convertFilter[ConvertFilter::Zones] ||
+      settings.extractFilter[ExtractFilter::Zones]) {
     ExtractZones(ctx, shaders, ties, shrubs, foliages, lightmaps, zones);
   }
 }

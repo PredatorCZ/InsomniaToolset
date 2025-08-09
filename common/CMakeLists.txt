@@ -5,6 +5,11 @@ target_include_directories(insomnia-interface INTERFACE include)
 target_link_libraries(insomnia-interface INTERFACE spike-interface pugixml-interface)
 set(CORE_SOURCE_FILES src/serialize.cpp;src/reflected.cpp)
 
+if(GLTF)
+  target_link_libraries(insomnia-interface INTERFACE gltf-interface)
+  list(APPEND CORE_SOURCE_FILES src/gltf_shared.cpp)
+endif()
+
 if(NOT NO_OBJECTS)
   add_library(insomnia-objects OBJECT ${CORE_SOURCE_FILES})
   target_link_libraries(insomnia-objects PUBLIC insomnia-interface)

@@ -15,7 +15,7 @@
     along with this program.If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "gltf_ighw.hpp"
+#include "insomnia/gltf.hpp"
 #include "project.h"
 #include "spike/app_context.hpp"
 #include "spike/io/binreader_stream.hpp"

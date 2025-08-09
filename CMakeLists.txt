@@ -26,3 +26,5 @@ add_spike_subdir(sound)
 
 set(TPD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/fragmented/3rd_party)
 add_spike_subdir(3rd_party/fragmented/psarc)
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data DESTINATION $<IF:$<BOOL:${UNIX}>,${CMAKE_INSTALL_PREFIX},${CMAKE_INSTALL_PREFIX}/bin>)

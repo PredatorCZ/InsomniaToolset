@@ -1,12 +1,12 @@
-#include "gltf_ighw.hpp"
+#include "insomnia/gltf.hpp"
 #include "insomnia/internal/vertex.hpp"
 #include "nlohmann/json.hpp"
 #include "spike/app_context.hpp"
 #include "spike/io/binreader_stream.hpp"
-#include "spike/uni/rts.hpp"
 
 void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
-                AppContext *ctx, AppContextStream &shdStream) {
+                AppContext *ctx, AppContextStream &shdStream,
+                IGHWTOCIteratorConst<ResourceAnimsets> &anims) {
   IGHWTOCIteratorConst<MobyV2> mobys;
   IGHWTOCIteratorConst<VertexBuffer> vertexBuffers;
   IGHWTOCIteratorConst<IndexBuffer> indexBuffers;
@@ -24,7 +24,7 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
                      shaderLookups);
 
   IGHW shaderMain;
-  GLTFModel main;
+  GLTFAni main;
 
   for (const ShaderResourceLookup &lookup : shaderLookups) {
     auto found = std::find(shaders.begin(), shaders.end(), lookup.hash);
@@ -45,6 +45,7 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
 
   const MobyV2 *moby = mobys.begin();
   const Skeleton *skeleton = moby->skeleton;
+  assert((skeleton->translationShift & 0xf0) == 0);
 
   for (uint32 i = 0; i < skeleton->numBones; i++) {
     gltf::Node &glNode = main.nodes.emplace_back();
@@ -64,7 +65,11 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
     tm.r3().w = 0;
     tm.r4().w = 1;
 
-    memcpy(glNode.matrix.data(), &tm, 64);
+    Vector4A16 rotation, translation, scale;
+    tm.Decompose(translation, rotation, scale);
+    memcpy(glNode.rotation.data(), &rotation, 16);
+    memcpy(glNode.translation.data(), &translation, 12);
+    memcpy(glNode.scale.data(), &scale, 12);
   }
 
   const uint16 *indexBuffer = &indexBuffers.begin()->data;
@@ -286,6 +291,22 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
 
       glPrim.indices = main.SaveIndices(idx.data(), idx.size()).accessorIndex;
     }
+  }
+
+  auto foundAnimset = std::find(anims.begin(), anims.end(), moby->animset);
+
+  if (foundAnimset != anims.end()) {
+    auto tieStream = ctx->RequestFile(
+        std::string(ctx->workingFile.GetFolder()) + "animsets.dat");
+    BinReaderRef_e subRd(*tieStream.Get());
+
+    subRd.SetRelativeOrigin(foundAnimset->offset);
+    IGHW animData;
+    animData.FromStream(subRd, Version::V2);
+    IGHWTOCIteratorConst<Animation> animations;
+
+    CatchClasses(animData, animations);
+    LoadAnimations(main, animations, skeleton->translationShift);
   }
 
   main.FinishAndSave(ctx->NewFile(mobyPath.ChangeExtension2("glb")).str, "");
@@ -644,64 +665,6 @@ void FoliageToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
   FoliageToGltf(main, shaders, ighw, shdStream, materialRemaps);
 
   main.FinishAndSave(ctx->NewFile(path.ChangeExtension2("glb")).str, "");
-}
-
-void Instantiate(IMGLTF &main, gltf::Node &glNode,
-                 std::vector<es::Matrix44> &tms) {
-  if (tms.size() == 1) {
-    memcpy(glNode.matrix.data(), tms.data(), 64);
-  } else if (tms.size() > 1) {
-    std::vector<Vector> scales;
-    bool processScales = false;
-
-    auto &str = main.GetTranslations();
-    auto [accPos, accPosIndex] = main.NewAccessor(str, 4);
-    accPos.type = gltf::Accessor::Type::Vec3;
-    accPos.componentType = gltf::Accessor::ComponentType::Float;
-    accPos.count = tms.size();
-
-    auto [accRot, accRotIndex] = main.NewAccessor(str, 4, 12);
-    accRot.type = gltf::Accessor::Type::Vec4;
-    accRot.componentType = gltf::Accessor::ComponentType::Short;
-    accRot.normalized = true;
-    accRot.count = tms.size();
-    Vector4A16::SetEpsilon(0.00001f);
-
-    for (const es::Matrix44 &mtx : tms) {
-      uni::RTSValue val{};
-      mtx.Decompose(val.translation, val.rotation, val.scale);
-      scales.emplace_back(val.scale);
-
-      if (!processScales) {
-        processScales = val.scale != Vector4A16(1, 1, 1, 0);
-      }
-
-      str.wr.Write<Vector>(val.translation);
-
-      val.rotation.Normalize() *= 0x7fff;
-      val.rotation =
-          Vector4A16(_mm_round_ps(val.rotation._data, _MM_ROUND_NEAREST));
-      auto comp = val.rotation.Convert<int16>();
-      str.wr.Write(comp);
-    }
-
-    auto &attrs =
-        glNode.GetExtensionsAndExtras()["extensions"]["EXT_mesh_gpu_instancing"]
-                                       ["attributes"];
-
-    attrs["TRANSLATION"] = accPosIndex;
-    attrs["ROTATION"] = accRotIndex;
-
-    if (processScales) {
-      auto &str = main.GetScales();
-      auto [accScale, accScaleIndex] = main.NewAccessor(str, 4);
-      accScale.type = gltf::Accessor::Type::Vec3;
-      accScale.componentType = gltf::Accessor::ComponentType::Float;
-      accScale.count = tms.size();
-      str.wr.WriteContainer(scales);
-      attrs["SCALE"] = accScaleIndex;
-    }
-  }
 }
 
 void GatherRegionTies(IMGLTF &main, AppContext *ctx,

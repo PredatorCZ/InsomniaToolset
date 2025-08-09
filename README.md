@@ -26,23 +26,23 @@ In addition, converts mobys and ties into GLTF format.
 
 ### Settings
 
-- **convert-shaders**
-
-  **CLI Long:** ***--convert-shaders***\
-  **CLI Short:** ***-s***
-
-  **Default value:** true
-
-  Convert shaders into XML format.
-
 - **extract-filter**
 
   **CLI Long:** ***--extract-filter***\
   **CLI Short:** ***-e***
 
-  **Default value:** Mobys | Ties | Shrubs | Foliages | Zones | Textures | Shaders | Cinematics | Animsets | Cubemaps
+  **Default value:** NULL
 
   Select groups that should be extracted.
+
+- **convert-filter**
+
+  **CLI Long:** ***--convert-filter***\
+  **CLI Short:** ***-c***
+
+  **Default value:** Mobys | Ties | Shrubs | Foliages | Zones | Textures | Shaders | Animsets
+
+  Select groups that should be converted.
 
 ## Extract Effect
 
@@ -76,7 +76,6 @@ Currently there are some missing features:
 - moby instances (individual mobys are converted to GLTF)
 - Water(?)
 - Skybox
-- moby animations
 - terrain texture blend
 
 Textures are embedded in the GLTF file and converted to be up to GLTF standard.

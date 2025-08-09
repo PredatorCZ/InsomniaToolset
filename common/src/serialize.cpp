@@ -176,8 +176,6 @@ template <> void FByteswapper(Bone &input, bool) {
 template <> void FByteswapper(Skeleton &input, bool) {
   FByteswapper(input.numBones);
   FByteswapper(input.rootBone);
-  FByteswapper(input.unk0);
-  FByteswapper(input.unk1);
 
   for (uint32 i = 0; i < input.numBones; i++) {
     FByteswapper(input.bones[i]);
@@ -258,7 +256,7 @@ template <> void FByteswapper(MobyV1 &input, bool) {
   FByteswapper(input.unk01);
   FByteswapper(input.unk02);
   FByteswapper(input.numBones);
-  FByteswapper(input.unk03);
+  FByteswapper(input.numAnimations);
   FByteswapper(input.numMeshes);
   FByteswapper(input.mobyId);
   FByteswapper(input.null00);
@@ -607,6 +605,42 @@ template <> void FByteswapper(Shrubs &item, bool) {
   }
 }
 
+template <> void FByteswapper(RootMotionFrame &item, bool) {
+  FByteswapper(item.rotation);
+  FByteswapper(item.scale);
+  FByteswapper(item.translation);
+  FByteswapper(item.unk0);
+  FByteswapper(item.unk1);
+}
+
+template <> void FByteswapper(Animation &item, bool) {
+  FByteswapper(item.animIndex);
+  FByteswapper(item.flags);
+  FByteswapper(item.numBones);
+  FByteswapper(item.numFrames);
+  FByteswapper(item.unk4);
+  FByteswapper(item.linearSpeed);
+  FByteswapper(item.frameRate);
+  FByteswapper(item.null0);
+  FByteswapper(item.refPoseBufferSize);
+  FByteswapper(item.frameStride);
+  FByteswapper(item.numReferenceValues);
+  FByteswapper(item.num16BitTracks);
+  FByteswapper(item.num8bitTracks);
+  FByteswapper(item.unk10);
+  FByteswapper(item.null1);
+
+  if (!item.flags[AnimationFlag::PackedFrames]) {
+    item.frameStride += GetPadding(item.frameStride, 0x80);
+  }
+
+  if (item.rootMotion) {
+    for (uint16 f = 0; f < item.numFrames; f++) {
+      FByteswapper(item.rootMotion[f]);
+    }
+  }
+}
+
 template <> void FByteswapper(GameplayMoby &item, bool) {
   FByteswapper(item.classIndex);
   FByteswapper(item.unk);
@@ -821,7 +855,7 @@ static const std::vector<ClassInfo> FIXUPS[]{
                     BlendmapTextureV1, MaterialV1, Shrub, Shrubs, Foliage,
                     FoliageSpritePositions, FoliageInstance, NavmeshPositions,
                     NavmeshPositions2, Detail, DetailInstance, DetailCluster,
-                    Gameplay, Sounds, SoundBank>(),
+                    Gameplay, Sounds, SoundBank, Animation>(),
     RegisterClasses<MaterialV1_5, Texture, MaterialResourceNameLookup, MobyV1,
                     PrimitiveV2, TiePrimitiveV2, HighmipTextureData,
                     LightmapTexture, ShadowmapTexture, TieV1_5, TieInstanceV1_5,
@@ -833,8 +867,8 @@ static const std::vector<ClassInfo> FIXUPS[]{
         TextureResource, Material, Texture, MaterialResourceNameLookup,
         ShaderResourceLookup, ZoneHash, ZoneNameLookup, ZoneLightmap,
         ZoneShadowMap, ZoneDataLookup, ZoneData2Lookup, ZoneMap, MobyV2,
-        PrimitiveV2, TieV2, TiePrimitiveV2, RegionMeshV2, TieInstanceV2,
-        UnkInstanceV2, ZoneTieLookup, ZoneShaderLookup, ShrubV2,
+        PrimitiveV2, TieV2, TiePrimitiveV2, RegionMeshV2, Animation,
+        TieInstanceV2, UnkInstanceV2, ZoneTieLookup, ZoneShaderLookup, ShrubV2,
         ZoneShrubLookup, ShrubV2Instance, FoliageV2Instance, FoliageV2Unk1,
         FoliageV2, ZoneFoliageLookup, SoundsV2, SoundBank>(),
     RegisterClasses<

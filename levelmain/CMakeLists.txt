@@ -8,7 +8,7 @@ build_target(
   TYPE
   ESMODULE
   VERSION
-  1
+  2
   SOURCES
   extract.cpp
   LINKS

@@ -16,7 +16,7 @@
 */
 
 #include "glm/gtx/quaternion.hpp"
-#include "insomnia/insomnia.hpp"
+#include "insomnia/gltf.hpp"
 #include "insomnia/internal/vertex.hpp"
 #include "nlohmann/json.hpp"
 #include "project.h"
@@ -28,6 +28,7 @@
 #include "spike/reflect/reflector.hpp"
 #include "spike/type/float.hpp"
 #include "spike/uni/rts.hpp"
+#include <fstream>
 #include <set>
 
 std::string_view filters[]{
@@ -42,31 +43,38 @@ static AppInfo_s appInfo{
 
 AppInfo_s *AppInitModule() { return &appInfo; }
 
-struct IMGLTF : GLTFModel {
-  GLTFStream &GetTranslations() {
-    if (instTrs < 0) {
-      auto &str = NewStream("instance-tms", 20);
-      instTrs = str.slot;
-      return str;
-    }
+std::vector<std::string_view> MOBY_NAMES;
+std::string MOBY_NAMES_BUFFER;
 
-    return Stream(instTrs);
+bool AppInitContext(const std::string &dataFolder) {
+  const std::string fileName = dataFolder + "mobys_rfom.txt";
+  std::ifstream str(fileName, std::ios::in | std::ios::ate);
+  if (str.fail()) {
+    throw es::FileInvalidAccessError(fileName);
+  }
+  MOBY_NAMES_BUFFER.resize(str.tellg());
+  str.seekg(0);
+  str.read(MOBY_NAMES_BUFFER.data(), MOBY_NAMES_BUFFER.size());
+  const char *curStart = MOBY_NAMES_BUFFER.data();
+  MOBY_NAMES.emplace_back();
+
+  for (const char &c : MOBY_NAMES_BUFFER) {
+    if (c == '\n') {
+      MOBY_NAMES.emplace_back(curStart, &c);
+      curStart = &c + 1;
+    }
   }
 
-  GLTFStream &GetScales() {
-    if (instScs < 0) {
-      auto &str = NewStream("instance-scale");
-      instScs = str.slot;
-      return str;
-    }
+  return true;
+}
 
-    return Stream(instScs);
+std::string MobyName(uint16 classId) {
+  if (classId >= MOBY_NAMES.size() || MOBY_NAMES.at(classId).empty()) {
+    return "moby_" + std::to_string(classId);
   }
 
-private:
-  int32 instTrs = -1;
-  int32 instScs = -1;
-};
+  return std::string(MOBY_NAMES.at(classId));
+}
 
 struct TextureKey {
   const Texture *tex;
@@ -392,7 +400,11 @@ void MobyToGltf(const MobyV1 &moby, IMGLTF &main, BinReaderRef_e stream,
     tm.r3().w = 0;
     tm.r4().w = 1;
 
-    memcpy(glNode.matrix.data(), &tm, 64);
+    Vector4A16 rotation, translation, scale;
+    tm.Decompose(translation, rotation, scale);
+    memcpy(glNode.rotation.data(), &rotation, 16);
+    memcpy(glNode.translation.data(), &translation, 12);
+    memcpy(glNode.scale.data(), &scale, 12);
   }
 
   std::map<uint16, uint16> joints;
@@ -505,7 +517,8 @@ void MobyToGltf(const MobyV1 &moby, IMGLTF &main, BinReaderRef_e stream,
     glNode.mesh = main.meshes.size();
     glNode.skin = main.skins.size() - 1;
     if (rootNode > -1) {
-      glNode.name = "Moby_" + std::to_string(moby.mobyId) + "_";
+      glNode.name = MobyName(moby.mobyId);
+      glNode.name.push_back('_');
     }
     glNode.name.append("Mesh_" + std::to_string(i));
     gltf::Mesh &glMesh = main.meshes.emplace_back();
@@ -599,6 +612,10 @@ void MobyToGltf(const MobyV1 &moby, IMGLTF &main, BinReaderRef_e stream,
       glPrim.indices = main.SaveIndices(idx.data(), idx.size()).accessorIndex;
     }
   }
+
+  if (moby.numAnimations > 0) {
+    LoadAnimations(main, moby.animations.Get(), moby.numAnimations, skeleton);
+  }
 }
 
 std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
@@ -607,6 +624,8 @@ std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
                                 const Texture *textures) {
   IMGLTF main;
   main.QuantizeMesh(false);
+  main.extensionsRequired.emplace_back("KHR_materials_specular");
+  main.extensionsUsed.emplace_back("KHR_materials_specular");
   std::map<uint16, uint16> materialRemaps;
   MobyToGltf(moby, main, stream, materialRemaps);
 
@@ -615,8 +634,7 @@ std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
                 stream.BaseStream(), textureRemaps);
 
   main.FinishAndSave(ctx->NewFile(std::string(ctx->workingFile.GetFolder()) +
-                                  "moby_" + std::to_string(moby.mobyId) +
-                                  ".glb")
+                                  MobyName(moby.mobyId) + ".glb")
                          .str,
                      "");
 
@@ -701,60 +719,7 @@ void TieToGltf(const TieV1 &tie, IMGLTF &level,
     }
   }
 
-  if (tms.size() == 1) {
-    memcpy(glNode.matrix.data(), tms.data(), 64);
-  } else if (tms.size() > 1) {
-    std::vector<Vector> scales;
-    bool processScales = false;
-
-    auto &str = level.GetTranslations();
-    auto [accPos, accPosIndex] = level.NewAccessor(str, 4);
-    accPos.type = gltf::Accessor::Type::Vec3;
-    accPos.componentType = gltf::Accessor::ComponentType::Float;
-    accPos.count = tms.size();
-
-    auto [accRot, accRotIndex] = level.NewAccessor(str, 4, 12);
-    accRot.type = gltf::Accessor::Type::Vec4;
-    accRot.componentType = gltf::Accessor::ComponentType::Short;
-    accRot.normalized = true;
-    accRot.count = tms.size();
-    Vector4A16::SetEpsilon(0.00001f);
-
-    for (const es::Matrix44 &mtx : tms) {
-      uni::RTSValue val{};
-      mtx.Decompose(val.translation, val.rotation, val.scale);
-      scales.emplace_back(val.scale);
-
-      if (!processScales) {
-        processScales = val.scale != Vector4A16(1, 1, 1, 0);
-      }
-
-      str.wr.Write<Vector>(val.translation);
-
-      val.rotation.Normalize() *= 0x7fff;
-      val.rotation =
-          Vector4A16(_mm_round_ps(val.rotation._data, _MM_ROUND_NEAREST));
-      auto comp = val.rotation.Convert<int16>();
-      str.wr.Write(comp);
-    }
-
-    auto &attrs =
-        glNode.GetExtensionsAndExtras()["extensions"]["EXT_mesh_gpu_instancing"]
-                                       ["attributes"];
-
-    attrs["TRANSLATION"] = accPosIndex;
-    attrs["ROTATION"] = accRotIndex;
-
-    if (processScales) {
-      auto &str = level.GetScales();
-      auto [accScale, accScaleIndex] = level.NewAccessor(str, 4);
-      accScale.type = gltf::Accessor::Type::Vec3;
-      accScale.componentType = gltf::Accessor::ComponentType::Float;
-      accScale.count = tms.size();
-      str.wr.WriteContainer(scales);
-      attrs["SCALE"] = accScaleIndex;
-    }
-  }
+  Instantiate(level, glNode, tms);
 }
 
 void DetailToGltf(const DetailCluster &detailCluster, IMGLTF &level,
@@ -834,60 +799,7 @@ void DetailToGltf(const DetailCluster &detailCluster, IMGLTF &level,
     }
   }
 
-  if (tms.size() == 1) {
-    memcpy(glNode.matrix.data(), tms.data(), 64);
-  } else if (tms.size() > 1) {
-    std::vector<Vector> scales;
-    bool processScales = false;
-
-    auto &str = level.GetTranslations();
-    auto [accPos, accPosIndex] = level.NewAccessor(str, 4);
-    accPos.type = gltf::Accessor::Type::Vec3;
-    accPos.componentType = gltf::Accessor::ComponentType::Float;
-    accPos.count = tms.size();
-
-    auto [accRot, accRotIndex] = level.NewAccessor(str, 4, 12);
-    accRot.type = gltf::Accessor::Type::Vec4;
-    accRot.componentType = gltf::Accessor::ComponentType::Short;
-    accRot.normalized = true;
-    accRot.count = tms.size();
-    Vector4A16::SetEpsilon(0.00001f);
-
-    for (const es::Matrix44 &mtx : tms) {
-      uni::RTSValue val{};
-      mtx.Decompose(val.translation, val.rotation, val.scale);
-      scales.emplace_back(val.scale);
-
-      if (!processScales) {
-        processScales = val.scale != Vector4A16(1, 1, 1, 0);
-      }
-
-      str.wr.Write<Vector>(val.translation);
-
-      val.rotation.Normalize() *= 0x7fff;
-      val.rotation =
-          Vector4A16(_mm_round_ps(val.rotation._data, _MM_ROUND_NEAREST));
-      auto comp = val.rotation.Convert<int16>();
-      str.wr.Write(comp);
-    }
-
-    auto &attrs =
-        glNode.GetExtensionsAndExtras()["extensions"]["EXT_mesh_gpu_instancing"]
-                                       ["attributes"];
-
-    attrs["TRANSLATION"] = accPosIndex;
-    attrs["ROTATION"] = accRotIndex;
-
-    if (processScales) {
-      auto &str = level.GetScales();
-      auto [accScale, accScaleIndex] = level.NewAccessor(str, 4);
-      accScale.type = gltf::Accessor::Type::Vec3;
-      accScale.componentType = gltf::Accessor::ComponentType::Float;
-      accScale.count = tms.size();
-      str.wr.WriteContainer(scales);
-      attrs["SCALE"] = accScaleIndex;
-    }
-  }
+  Instantiate(level, glNode, tms);
 }
 
 void RegionToGltf(IGHWTOCIteratorConst<RegionMesh> items, IMGLTF &level,
@@ -1060,61 +972,7 @@ void FoliageToGltf(const Foliage &foliage, IMGLTF &level,
     }
   }
 
-  if (tms.size() == 1) {
-    memcpy(glFoliageNode.matrix.data(), tms.data(), 64);
-  } else if (tms.size() > 1) {
-    std::vector<Vector> scales;
-    bool processScales = false;
-
-    auto &str = level.GetTranslations();
-    auto [accPos, accPosIndex] = level.NewAccessor(str, 4);
-    accPos.type = gltf::Accessor::Type::Vec3;
-    accPos.componentType = gltf::Accessor::ComponentType::Float;
-    accPos.count = tms.size();
-
-    auto [accRot, accRotIndex] = level.NewAccessor(str, 4, 12);
-    accRot.type = gltf::Accessor::Type::Vec4;
-    accRot.componentType = gltf::Accessor::ComponentType::Short;
-    accRot.normalized = true;
-    accRot.count = tms.size();
-    Vector4A16::SetEpsilon(0.00001f);
-
-    for (const es::Matrix44 &mtx : tms) {
-      uni::RTSValue val{};
-      mtx.Decompose(val.translation, val.rotation, val.scale);
-      scales.emplace_back(val.scale);
-
-      if (!processScales) {
-        processScales = val.scale != Vector4A16(1, 1, 1, 0);
-      }
-
-      str.wr.Write<Vector>(val.translation);
-
-      val.rotation.Normalize() *= 0x7fff;
-      val.rotation =
-          Vector4A16(_mm_round_ps(val.rotation._data, _MM_ROUND_NEAREST));
-      auto comp = val.rotation.Convert<int16>();
-      str.wr.Write(comp);
-    }
-
-    auto &attrs =
-        level.nodes.at(folNodeIndex)
-            .GetExtensionsAndExtras()["extensions"]["EXT_mesh_gpu_instancing"]
-                                     ["attributes"];
-
-    attrs["TRANSLATION"] = accPosIndex;
-    attrs["ROTATION"] = accRotIndex;
-
-    if (processScales) {
-      auto &str = level.GetScales();
-      auto [accScale, accScaleIndex] = level.NewAccessor(str, 4);
-      accScale.type = gltf::Accessor::Type::Vec3;
-      accScale.componentType = gltf::Accessor::ComponentType::Float;
-      accScale.count = tms.size();
-      str.wr.WriteContainer(scales);
-      attrs["SCALE"] = accScaleIndex;
-    }
-  }
+  Instantiate(level, level.nodes.at(folNodeIndex), tms);
 
   for (uint32 i = 0; i < foliage.usedSpriteLods; i++) {
     const SpriteLodRange &lod = foliage.spriteLodRanges[i];

@@ -16,6 +16,7 @@
 */
 
 #pragma once
+#include "classes/animation.hpp"
 #include "classes/detail.hpp"
 #include "classes/foliage.hpp"
 #include "classes/gameplay.hpp"
