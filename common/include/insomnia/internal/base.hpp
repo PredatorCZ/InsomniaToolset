@@ -17,9 +17,8 @@
 
 #pragma once
 #include "insomnia/internal/settings.hpp"
+#include "spike/type/matrix44.hpp"
 #include "spike/type/pointer.hpp"
-#include "spike/util/pugi_fwd.hpp"
-#include "spike/util/supercore.hpp"
 
 struct IGHW;
 
@@ -39,4 +38,12 @@ struct Hash {
   bool operator==(const Hash other) const {
     return part1 == other.part1 && part2 == other.part2;
   }
+};
+
+struct BoundSphere {
+  Vector4A16 data;
+};
+
+struct OOBB {
+  es::Matrix44 data;
 };

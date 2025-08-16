@@ -5,8 +5,8 @@
 
 struct Vertex0 {
   int16 position[3];
-  int16 boneIndex;
-  float16 uv[2];
+  int16 purpose;
+  float16 uv0[2];
   uint32 normal;
   uint32 tangent;
 };
@@ -16,13 +16,14 @@ struct Vertex1 {
   int16 unk;
   uint8 bones[4];
   uint8 weights[4];
-  float16 uv[2];
+  float16 uv0[2];
   uint32 normal;
   uint32 tangent;
 };
 
 struct RegionVertex {
-  int16 position[4];
+  int16 position[3];
+  int16 purpose;
   float16 uv0[2];
   float16 uv1[2];
   uint16 normal[2];
@@ -31,7 +32,8 @@ struct RegionVertex {
 };
 
 struct RegionVertexV2 {
-  int16 position[4];
+  int16 position[3];
+  int16 purpose;
   float16 uv0[2];
   float16 uv1[2];
   uint32 normal;
@@ -101,6 +103,7 @@ inline void FByteswapper(SpriteVertex &item) {
 
 inline void FByteswapper(RegionVertex &item) {
   FByteswapper(item.position);
+  FByteswapper(item.purpose);
   FByteswapper(item.uv0);
   FByteswapper(item.uv1);
   FByteswapper(reinterpret_cast<uint32 &>(item.normal[0]));
@@ -110,6 +113,7 @@ inline void FByteswapper(RegionVertex &item) {
 
 inline void FByteswapper(RegionVertexV2 &item) {
   FByteswapper(item.position);
+  FByteswapper(item.purpose);
   FByteswapper(item.uv0);
   FByteswapper(item.uv1);
   FByteswapper(item.normal);
@@ -118,8 +122,8 @@ inline void FByteswapper(RegionVertexV2 &item) {
 
 inline void FByteswapper(Vertex0 &item) {
   FByteswapper(item.position);
-  FByteswapper(item.boneIndex);
-  FByteswapper(item.uv);
+  FByteswapper(item.purpose);
+  FByteswapper(item.uv0);
   FByteswapper(item.normal);
   FByteswapper(item.tangent);
 }
@@ -127,7 +131,7 @@ inline void FByteswapper(Vertex0 &item) {
 inline void FByteswapper(Vertex1 &item) {
   FByteswapper(item.position);
   FByteswapper(item.unk);
-  FByteswapper(item.uv);
+  FByteswapper(item.uv0);
   FByteswapper(item.normal);
   FByteswapper(item.tangent);
 }

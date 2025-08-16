@@ -428,6 +428,25 @@ size_t TieToGltf(GLTFModel &main,
     glPrim.attributes =
         main.SaveVertices(vtx0.data(), vtx0.size(), attrs, sizeof(Vertex0));
 
+    DecodeColor(main, glPrim, vtx0);
+
+    if (prim.useUV2) {
+      const USVector2 *secondaryUvs =
+          reinterpret_cast<const USVector2 *>(vertexBuffer +
+                                              tie->vertexBufferOffset1) +
+          prim.vertexOffset1;
+
+      std::vector<USVector2> vtx1(secondaryUvs,
+                                  secondaryUvs + prim.numVertices);
+
+      for (auto &v : vtx1) {
+        FByteswapper(v);
+      }
+
+      glPrim.attributes["TEXCOORD_1"] =
+          main.SaveVertices(vtx1.data(), vtx1.size(), attrs[1]);
+    }
+
     std::vector<uint16> idx(indices, indices + prim.numIndices);
     for (uint16 &i : idx) {
       FByteswapper(i);
@@ -850,6 +869,7 @@ void RegionToGltf(IMGLTF &main, IGHW &ighw,
 
       glPrim.attributes = main.SaveVertices(vtx0.data(), vtx0.size(), attrs,
                                             sizeof(RegionVertexV2));
+      DecodeColor(main, glPrim, vtx0);
 
       std::vector<uint16> idx(indices, indices + item.numIndices);
       for (uint16 &i : idx) {

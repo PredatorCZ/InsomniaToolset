@@ -19,7 +19,7 @@
 #pragma once
 #include "insomnia/internal/base.hpp"
 #include "spike/type/bitfield.hpp"
-#include "spike/type/vectors_simd.hpp"
+#include "spike/util/pugi_fwd.hpp"
 
 struct TextureResource : CoreClass {
   static constexpr uint32 ID = 0x5a00;

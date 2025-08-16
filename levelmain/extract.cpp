@@ -1,5 +1,5 @@
 /*  InsomniaToolset LevelmainToGLTF
-    Copyright(C) 2024 Lukas Cone
+    Copyright(C) 2024-2025 Lukas Cone
 
     This program is free software : you can redistribute it and / or modify
     it under the terms of the GNU General Public License as published by
@@ -644,7 +644,7 @@ std::set<TextureKey> MobyToGltf(const MobyV1 &moby, AppContext *ctx,
 void TieToGltf(const TieV1 &tie, IMGLTF &level,
                const LevelIndexBuffer &idxBuffer,
                const LevelVertexBuffer &vtxBuffer,
-               IGHWTOCIteratorConst<TieInstanceV1> tieInstances, uint32 index,
+               IGHWTOCIteratorConst<TieInstanceV1> tieInstances,
                std::map<uint16, uint16> &materialRemaps) {
   const uint16 *indexBuffer = &idxBuffer.data;
   const char *vertexBuffer = &vtxBuffer.data;
@@ -652,7 +652,7 @@ void TieToGltf(const TieV1 &tie, IMGLTF &level,
   level.scenes.front().nodes.emplace_back(level.nodes.size());
   gltf::Node &glNode = level.nodes.emplace_back();
   glNode.mesh = level.meshes.size();
-  glNode.name = "TieMesh_" + std::to_string(index);
+  glNode.name = "TieMesh_" + std::to_string(tie.tieId);
   gltf::Mesh &glMesh = level.meshes.emplace_back();
 
   AttributeMul attributeMul{tie.meshScale * 0x7fff};
@@ -665,9 +665,9 @@ void TieToGltf(const TieV1 &tie, IMGLTF &level,
             .first->second;
 
     const uint16 *indices = indexBuffer + prim.indexOffset;
-    const Vertex0 *vertices =
-        reinterpret_cast<const Vertex0 *>(vertexBuffer + tie.unk13) +
-        prim.vertexOffset0;
+    const Vertex0 *vertices = reinterpret_cast<const Vertex0 *>(
+                                  vertexBuffer + tie.vertexBufferOffset0) +
+                              prim.vertexOffset0;
 
     std::vector<Vertex0> vtx0(vertices, vertices + prim.numVertices);
 
@@ -696,6 +696,25 @@ void TieToGltf(const TieV1 &tie, IMGLTF &level,
 
     glPrim.attributes =
         level.SaveVertices(vtx0.data(), vtx0.size(), attrs, sizeof(Vertex0));
+
+    DecodeColor(level, glPrim, vtx0);
+
+    if (prim.useUv2) {
+      const USVector2 *secondaryUvs =
+          reinterpret_cast<const USVector2 *>(vertexBuffer +
+                                              tie.vertexBufferOffset1) +
+          prim.vertexOffset1;
+
+      std::vector<USVector2> vtx1(secondaryUvs,
+                                  secondaryUvs + prim.numVertices);
+
+      for (auto &v : vtx1) {
+        FByteswapper(v);
+      }
+
+      glPrim.attributes["TEXCOORD_1"] =
+          level.SaveVertices(vtx1.data(), vtx1.size(), attrs[1]);
+    }
 
     std::vector<uint16> idx(indices, indices + prim.numIndices);
     for (uint16 &i : idx) {
@@ -818,7 +837,7 @@ void RegionToGltf(IGHWTOCIteratorConst<RegionMesh> items, IMGLTF &level,
   for (const RegionMesh &item : items) {
     gltf::Primitive &glPrim = glMesh.primitives.emplace_back();
     glPrim.material =
-        materialRemaps.try_emplace(item.materialIndex, materialRemaps.size())
+        materialRemaps.try_emplace(item.materialIndex0, materialRemaps.size())
             .first->second;
 
     const uint16 *indices = indexBuffer + item.indexOffset;
@@ -861,6 +880,7 @@ void RegionToGltf(IGHWTOCIteratorConst<RegionMesh> items, IMGLTF &level,
 
     glPrim.attributes = level.SaveVertices(vtx0.data(), vtx0.size(), attrs,
                                            sizeof(RegionVertex));
+    DecodeColor(level, glPrim, vtx0);
 
     std::vector<uint16> idx(indices, indices + item.numIndices);
     for (uint16 &i : idx) {
@@ -1340,8 +1360,8 @@ void AppProcessFile(AppContext *ctx) {
     std::map<uint16, uint16> materialRemaps;
     std::map<uint16, uint16> foliageRemaps;
 
-    for (size_t tieIdx = 0; const TieV1 &tie : ties) {
-      TieToGltf(tie, level, indices.at(0), verts.at(0), tieInstances, tieIdx++,
+    for (const TieV1 &tie : ties) {
+      TieToGltf(tie, level, indices.at(0), verts.at(0), tieInstances,
                 materialRemaps);
     }
 

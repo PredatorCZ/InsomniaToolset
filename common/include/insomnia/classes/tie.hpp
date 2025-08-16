@@ -29,7 +29,7 @@ struct TiePrimitiveV2 : CoreClass {
   uint16 unk000;
   uint8 unk00;
   uint8 unk01;
-  uint8 unk02;
+  uint8 useUV2;
   uint8 unk03;
   uint32 numIndices;
   uint32 unk0[3];
@@ -49,8 +49,9 @@ struct TieV2 : CoreClass {
   es::PointerX86<char> unkData1;
   uint32 unk00;
   uint32 numPrimitives;
-  uint32 unk01[2];
-  uint32 unk02;
+  uint32 unk01;
+  uint32 vertexBufferOffset0;
+  uint32 vertexBufferOffset1;
   uint16 unk13;
   uint16 unk14;
   Vector meshScale;
@@ -120,7 +121,9 @@ struct TiePrimitiveV1 : CoreClass {
   uint16 numVertices;
   uint16 vertexOffset0;
   uint16 vertexOffset1;
-  uint32 unk[4];
+  uint8 useUv2;
+  uint8 unk2[3];
+  uint32 unk[3];
 };
 
 struct TieV1 : CoreClass {
@@ -131,9 +134,10 @@ struct TieV1 : CoreClass {
   uint16 numMeshes;
   uint16 unk01;
   uint32 unk02;
-  uint32 unk13;
-  uint32 unk14;
-  uint32 offset0;
+  uint32 vertexBufferOffset0;
+  uint32 vertexBufferOffset1;
+  uint16 tieId;
+  uint16 unk16;
   uint32 null00;
   Vector meshScale;
   float unk03[5];
@@ -143,8 +147,11 @@ struct TieInstanceV1 : CoreClass {
   static constexpr uint32 ID = 0x9300;
 
   es::Matrix44 tm;
-  float unk0[16];
-  uint32 unk1[3];
+  OOBB bounds;
+  uint16 lightMapIndex;
+  uint16 unk0;
+  uint32 offset0;
+  uint32 offset1;
   es::PointerX86<TieV1> tie;
   uint32 unk[12];
 };

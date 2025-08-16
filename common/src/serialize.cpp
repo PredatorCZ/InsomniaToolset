@@ -30,6 +30,12 @@ void fixupper(CoreClass *data, bool way, std::set<void *> &swapped) {
   FByteswapper(*static_cast<C *>(data), way);
 }
 
+template <> void FByteswapper(OOBB &input, bool) { FByteswapper(input.data); }
+
+template <> void FByteswapper(BoundSphere &input, bool) {
+  FByteswapper(input.data);
+}
+
 template <> void FByteswapper(Hash &input, bool) {
   FByteswapper(input.part1);
   FByteswapper(input.part2);
@@ -307,7 +313,8 @@ template <> void FByteswapper(TieV2 &input, bool) {
   FByteswapper(input.unk00);
   FByteswapper(input.numPrimitives);
   FByteswapper(input.unk01);
-  FByteswapper(input.unk02);
+  FByteswapper(input.vertexBufferOffset0);
+  FByteswapper(input.vertexBufferOffset1);
   FByteswapper(input.unk13);
   FByteswapper(input.unk14);
   FByteswapper(input.meshScale);
@@ -358,9 +365,10 @@ template <> void FByteswapper(TieV1 &input, bool) {
   FByteswapper(input.numMeshes);
   FByteswapper(input.unk01);
   FByteswapper(input.unk02);
-  FByteswapper(input.unk13);
-  FByteswapper(input.unk14);
-  FByteswapper(input.offset0);
+  FByteswapper(input.vertexBufferOffset0);
+  FByteswapper(input.vertexBufferOffset1);
+  FByteswapper(input.tieId);
+  FByteswapper(input.unk16);
   FByteswapper(input.null00);
   FByteswapper(input.meshScale);
   FByteswapper(input.unk03);
@@ -368,21 +376,26 @@ template <> void FByteswapper(TieV1 &input, bool) {
 
 template <> void FByteswapper(TieInstanceV1 &input, bool) {
   FByteswapper(input.tm);
+  FByteswapper(input.bounds);
+  FByteswapper(input.lightMapIndex);
   FByteswapper(input.unk0);
-  FByteswapper(input.unk1);
+  FByteswapper(input.offset0);
+  FByteswapper(input.offset1);
   FByteswapper(input.unk);
 }
 
 template <> void FByteswapper(RegionMesh &input, bool) {
-  FByteswapper(input.unk);
+  FByteswapper(input.bounds);
   FByteswapper(input.position);
-  FByteswapper(input.materialIndex);
-  FByteswapper(input.unk6);
+  FByteswapper(input.materialIndex0);
+  FByteswapper(input.materialIndex1);
   FByteswapper(input.unk3);
   FByteswapper(input.indexOffset);
   FByteswapper(input.vertexOffset);
   FByteswapper(input.numIndices);
   FByteswapper(input.numVerties);
+  FByteswapper(input.unk0);
+  FByteswapper(input.lightMapIndex);
   FByteswapper(input.unk2);
   FByteswapper(input.meshScale);
   FByteswapper(input.unk4);

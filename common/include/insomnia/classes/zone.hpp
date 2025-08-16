@@ -45,16 +45,22 @@ struct ZoneMap : Texture {
 struct RegionMesh : CoreClass {
   static constexpr uint32 ID = 0x6200;
 
-  float unk[16];
+  OOBB bounds;
   Vector position;
-  uint16 materialIndex;
-  uint16 unk6;
+  uint16 materialIndex0;
+  uint16 materialIndex1;
   uint32 unk3;
   uint32 indexOffset;
   uint32 vertexOffset;
   uint16 numIndices;
   uint16 numVerties;
-  uint32 unk2[5];
+  uint16 unk0;
+  uint16 lightMapIndex;
+  uint8 unk02;
+  uint8 unk00;
+  uint8 unk03;
+  uint8 unk01;
+  uint32 unk2[3];
   float meshScale;
   uint32 unk4[2];
 };

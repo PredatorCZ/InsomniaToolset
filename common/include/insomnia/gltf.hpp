@@ -77,3 +77,25 @@ void IS_EXTERN LoadAnimations(GLTFAni &glMain,
                               const uint32 numAnimations, const Skeleton *skel);
 void IS_EXTERN Instantiate(IMGLTF &main, gltf::Node &glNode,
                            std::vector<es::Matrix44> &tms);
+
+inline void DecodeColor(GLTFModel &level, gltf::Primitive &glPrim,
+                        auto &vtxContainer) {
+  std::vector<UCVector4> color;
+
+  for (auto &v : vtxContainer) {
+    float posw = abs(v.purpose);
+    float cl0 = std::min(posw / 0x4000, 1.f);
+    float cl1 = posw / 0x80;
+    cl1 = cl1 - std::floor(cl1);
+
+    color.emplace_back((Vector4{cl0, cl0, cl0, cl1} * 255).Convert<uint8>());
+  }
+
+  glPrim.attributes["COLOR_0"] =
+      level.SaveVertices(color.data(), color.size(),
+                         {
+                             .type = uni::DataType::R8G8B8A8,
+                             .format = uni::FormatType::UNORM,
+                             .usage = AttributeType::VertexColor,
+                         });
+}

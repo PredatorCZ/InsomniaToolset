@@ -27,7 +27,6 @@ Currently there are some missing features:
 - moby instances (individual mobys are converted to GLTF)
 - Water(?)
 - Skybox
-- terrain texture blend
 
 Textures are embedded in the GLTF file and converted to be up to GLTF standard.
 Textures, that were unable to be linked to GLTFs are normally extracted, however unconverted (normal and template maps)</levelmain_to_gltf>
