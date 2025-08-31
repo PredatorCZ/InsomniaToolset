@@ -157,7 +157,7 @@ void Material(IGHW &main, pugi::xml_node node) {
     }
 
     ReflectorWrap ri(mat);
-    ReflectorXMLUtil::SaveV2a(ri, matNode,
+    ReflectorXMLUtil::Save(ri, matNode,
                               ReflectorXMLUtil::Flags_StringAsAttribute);
   }
 
@@ -208,7 +208,7 @@ void Material(IGHW &main, pugi::xml_node node) {
       curItem++;
 
       ReflectorWrap ri(tex);
-      ReflectorXMLUtil::SaveV2a(ri, texNode.append_child("texture"),
+      ReflectorXMLUtil::Save(ri, texNode.append_child("texture"),
                                 ReflectorXMLUtil::Flags_StringAsAttribute);
     }
   }
