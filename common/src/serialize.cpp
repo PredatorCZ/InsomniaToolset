@@ -32,6 +32,8 @@ void fixupper(CoreClass *data, bool way, std::set<void *> &swapped) {
 
 template <> void FByteswapper(OOBB &input, bool) { FByteswapper(input.data); }
 
+template <> void FByteswapper(TieBound &input, bool) { FByteswapper(input.data); }
+
 template <> void FByteswapper(BoundSphere &input, bool) {
   FByteswapper(input.data);
 }
@@ -363,7 +365,7 @@ template <> void FByteswapper(TiePrimitiveV1 &input, bool) {
 
 template <> void FByteswapper(TieV1 &input, bool) {
   FByteswapper(input.numMeshes);
-  FByteswapper(input.unk01);
+  FByteswapper(input.numBounds);
   FByteswapper(input.unk02);
   FByteswapper(input.vertexBufferOffset0);
   FByteswapper(input.vertexBufferOffset1);
@@ -863,7 +865,7 @@ template <class... C> auto RegisterClasses() {
 }
 
 static const std::vector<ClassInfo> FIXUPS[]{
-    RegisterClasses<MobyV1, PrimitiveV1, TieV1, TiePrimitiveV1, TieInstanceV1,
+    RegisterClasses<MobyV1, PrimitiveV1, TieV1, TiePrimitiveV1, TieInstanceV1,TieBound,
                     RegionMesh, DirectionalLightmapTextureV1, TextureV1,
                     BlendmapTextureV1, MaterialV1, Shrub, Shrubs, Foliage,
                     FoliageSpritePositions, FoliageInstance, NavmeshPositions,

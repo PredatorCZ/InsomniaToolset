@@ -130,9 +130,9 @@ struct TieV1 : CoreClass {
   static constexpr uint32 ID = 0x3400;
 
   es::PointerX86<TiePrimitiveV1> primitives;
-  es::PointerX86<char> unkData1;
+  es::PointerX86<OOBB> bounds;
   uint16 numMeshes;
-  uint16 unk01;
+  uint16 numBounds;
   uint32 unk02;
   uint32 vertexBufferOffset0;
   uint32 vertexBufferOffset1;
@@ -197,4 +197,8 @@ struct TieInstanceV2 : CoreClass {
   float unk2[4];
   int32 unk3;
   float unk4[3];
+};
+
+struct TieBound : OOBB, CoreClass {
+  static constexpr uint32 ID = 0x3f00;
 };
