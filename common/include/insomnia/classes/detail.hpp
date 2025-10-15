@@ -33,11 +33,13 @@ struct Detail : CoreClass {
 
 struct DetailCluster : CoreClass {
   static constexpr uint32 ID = 0xB300;
-  float unk0[20];
+  OOBB bounds;
+  BoundSphere boundSphere;
   es::PointerX86<Detail> primitives;
   uint32 numPrimitives;
   uint32 null00[2];
-  uint16 unk1[2];
+  uint16 detailId;
+  uint16 unk1;
   float unk2[7];
 };
 

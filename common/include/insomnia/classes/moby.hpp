@@ -49,10 +49,13 @@ struct MeshV2 : CoreClass {
 };
 
 struct Bone {
-  uint16 unk;
+  enum {
+    FLAG_DONT_INHERIT_SCALE = 1
+  };
+  uint16 flags;
   int16 parentIndex;
   uint16 child;
-  uint16 parentChild;
+  uint16 sibling;
 };
 
 struct Skeleton : CoreClass {

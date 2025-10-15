@@ -42,7 +42,7 @@ struct SpriteRange {
 struct Foliage : CoreClass {
   static constexpr uint32 ID = 0xc200;
   uint32 unk0;
-  uint16 unk4;
+  uint16 foliageId;
   uint16 unk6;
   uint32 textureIndex;
   uint32 unk5;

@@ -32,7 +32,9 @@ void fixupper(CoreClass *data, bool way, std::set<void *> &swapped) {
 
 template <> void FByteswapper(OOBB &input, bool) { FByteswapper(input.data); }
 
-template <> void FByteswapper(TieBound &input, bool) { FByteswapper(input.data); }
+template <> void FByteswapper(TieBound &input, bool) {
+  FByteswapper(input.data);
+}
 
 template <> void FByteswapper(BoundSphere &input, bool) {
   FByteswapper(input.data);
@@ -175,10 +177,10 @@ template <> void FByteswapper(ZoneMap &input, bool way) {
 }
 
 template <> void FByteswapper(Bone &input, bool) {
-  FByteswapper(input.unk);
+  FByteswapper(input.flags);
   FByteswapper(input.parentIndex);
   FByteswapper(input.child);
-  FByteswapper(input.parentChild);
+  FByteswapper(input.sibling);
 }
 
 template <> void FByteswapper(Skeleton &input, bool) {
@@ -421,9 +423,11 @@ template <> void FByteswapper(Detail &input, bool) {
 }
 
 template <> void FByteswapper(DetailCluster &input, bool) {
-  FByteswapper(input.unk0);
+  FByteswapper(input.bounds);
+  FByteswapper(input.boundSphere);
   FByteswapper(input.numPrimitives);
   FByteswapper(input.null00);
+  FByteswapper(input.detailId);
   FByteswapper(input.unk1);
   FByteswapper(input.unk2);
 }
@@ -865,12 +869,12 @@ template <class... C> auto RegisterClasses() {
 }
 
 static const std::vector<ClassInfo> FIXUPS[]{
-    RegisterClasses<MobyV1, PrimitiveV1, TieV1, TiePrimitiveV1, TieInstanceV1,TieBound,
-                    RegionMesh, DirectionalLightmapTextureV1, TextureV1,
-                    BlendmapTextureV1, MaterialV1, Shrub, Shrubs, Foliage,
-                    FoliageSpritePositions, FoliageInstance, NavmeshPositions,
-                    NavmeshPositions2, Detail, DetailInstance, DetailCluster,
-                    Gameplay, Sounds, SoundBank, Animation>(),
+    RegisterClasses<MobyV1, PrimitiveV1, TieV1, TiePrimitiveV1, TieInstanceV1,
+                    TieBound, RegionMesh, DirectionalLightmapTextureV1,
+                    TextureV1, BlendmapTextureV1, MaterialV1, Shrub, Shrubs,
+                    Foliage, FoliageSpritePositions, FoliageInstance,
+                    NavmeshPositions, NavmeshPositions2, Detail, DetailInstance,
+                    DetailCluster, Gameplay, Sounds, SoundBank, Animation>(),
     RegisterClasses<MaterialV1_5, Texture, MaterialResourceNameLookup, MobyV1,
                     PrimitiveV2, TiePrimitiveV2, HighmipTextureData,
                     LightmapTexture, ShadowmapTexture, TieV1_5, TieInstanceV1_5,
