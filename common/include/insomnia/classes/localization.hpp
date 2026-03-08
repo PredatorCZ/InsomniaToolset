@@ -1,0 +1,74 @@
+/*  InsomniaLib
+    Copyright(C) 2021-2026 Lukas Cone
+
+    This program is free software : you can redistribute it and / or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.If not, see <https://www.gnu.org/licenses/>.
+*/
+
+#pragma once
+#include "insomnia/internal/base.hpp"
+#include <span>
+
+struct LocalizationTag {
+  uint32 tag;
+  es::PointerX86<char> text;
+};
+
+enum class LocalizationType : uint32 {
+  Core,
+  Lobby,
+  Dialogue,
+  Pause,
+  Intel,
+  Frontend,
+  Movie,
+  Gameplay,
+  Script,
+  Credits,
+  Config,
+};
+
+enum class Language : uint32 {
+  en,
+  en_us,
+  fr,
+  de,
+  it,
+  ko,
+  nl,
+  pt,
+  es,
+  ja,
+};
+
+struct Localization : CoreClass {
+  static constexpr uint32 ID = 0x2600;
+
+  LocalizationType type;
+  es::PointerX86<uint32> debugTags;
+  es::PointerX86<LocalizationTag> tags;
+  es::PointerX86<char> textBuffer;
+  uint32 numDebugTags;
+  uint32 numTags;
+  Language language;
+
+  std::span<LocalizationTag> Tags() { return {tags.Get(), numTags}; }
+  std::span<const LocalizationTag> Tags() const {
+    return {tags.Get(), numTags};
+  }
+
+  std::span<uint32> DebugTags() { return {debugTags.Get(), numDebugTags}; }
+  std::span<const uint32> DebugTags() const {
+    return {debugTags.Get(), numDebugTags};
+  }
+};

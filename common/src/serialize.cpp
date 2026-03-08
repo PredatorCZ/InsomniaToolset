@@ -851,6 +851,77 @@ void Fixup(SCREAMBankHeader &item) {
 
 template <> void FByteswapper(SoundBank &item, bool) { Fixup(item.bank); }
 
+template <> void FByteswapper(Localization &item, bool) {
+  FByteswapper(item.type);
+  FByteswapper(item.numDebugTags);
+  FByteswapper(item.numTags);
+  FByteswapper(item.language);
+
+  for (auto &t : item.Tags()) {
+    FByteswapper(t.tag);
+  }
+
+  for (auto &t : item.DebugTags()) {
+    FByteswapper(t);
+  }
+}
+
+template <> void FByteswapper(FontCharacter &item, bool) {
+  FByteswapper(item.textureIndex);
+  FByteswapper(item.unk);
+  FByteswapper(item.ucs2Character);
+  FByteswapper(item.unk1);
+}
+
+template <> void FByteswapper(Font &item, bool) {
+  FByteswapper(item.start);
+  FByteswapper(item.kerningStartLeft);
+  FByteswapper(item.count);
+  FByteswapper(item.kerningStartRight);
+}
+
+template <> void FByteswapper(FontKerning &item, bool) {
+  FByteswapper(item.characters);
+  FByteswapper(item.spacings);
+}
+
+template <> void FByteswapper(FontTextureInfo &item, bool) {
+  FByteswapper(item.width);
+  FByteswapper(item.height);
+  FByteswapper(item.null0);
+}
+
+template <> void FByteswapper(FontFile &item, bool) {
+  FByteswapper(item.null0);
+  FByteswapper(item.numFonts);
+  FByteswapper(item.null5);
+  FByteswapper(item.null6);
+  FByteswapper(item.numCharacters);
+  FByteswapper(item.null7);
+  FByteswapper(item.null1);
+  FByteswapper(item.numKerningEntries);
+  FByteswapper(item.null2);
+  FByteswapper(item.null3);
+  FByteswapper(item.numTextures);
+  FByteswapper(item.null4);
+
+  for (auto &f : item.Fonts()) {
+    FByteswapper(f);
+  }
+
+  for (auto &c : item.Characters()) {
+    FByteswapper(c);
+  }
+
+  for (auto &c : item.Kernings()) {
+    FByteswapper(c);
+  }
+
+  for (auto &c : item.TextureInfos()) {
+    FByteswapper(c);
+  }
+}
+
 struct ClassInfo {
   uint32 id;
   uint16 size;
@@ -874,7 +945,8 @@ static const std::vector<ClassInfo> FIXUPS[]{
                     TextureV1, BlendmapTextureV1, MaterialV1, Shrub, Shrubs,
                     Foliage, FoliageSpritePositions, FoliageInstance,
                     NavmeshPositions, NavmeshPositions2, Detail, DetailInstance,
-                    DetailCluster, Gameplay, Sounds, SoundBank, Animation>(),
+                    DetailCluster, Gameplay, Sounds, SoundBank, Animation,
+                    Localization, FontFile>(),
     RegisterClasses<MaterialV1_5, Texture, MaterialResourceNameLookup, MobyV1,
                     PrimitiveV2, TiePrimitiveV2, HighmipTextureData,
                     LightmapTexture, ShadowmapTexture, TieV1_5, TieInstanceV1_5,
@@ -924,9 +996,13 @@ void IGHW::FromStream(BinReaderRef_e rd, Version version) {
   rd.ReadContainer(buffer, hdr.dataEnd);
 
   FByteswapper(*Header());
+  uint32 lastItemOffset = 0;
 
   for (auto &item : *this) {
     FByteswapper(item, false);
+    lastItemOffset = reinterpret_cast<uint32 &>(item.data);
+    lastItemOffset += item.count.Count();
+    lastItemOffset += GetPadding(lastItemOffset, 16);
     item.data.Fixup(buffer.data());
 
     if (hdr.versionMajor == 0 && item.id != -1U) {
@@ -935,16 +1011,17 @@ void IGHW::FromStream(BinReaderRef_e rd, Version version) {
   }
 
   if (hdr.versionMajor == 0) {
-    auto *lastItem = std::prev(end());
-    uint32 *fixupsBegin = reinterpret_cast<uint32 *>(
-        reinterpret_cast<char *>(lastItem->data.Get()) +
-        lastItem->count.Count());
-    uint32 *fixupsEnd = reinterpret_cast<uint32 *>(buffer.data() + hdr.dataEnd);
-    for (uint32 *f = fixupsBegin; f < fixupsEnd; f++) {
-      FByteswapper(*f);
+    uint32 *fixupsBegin =
+        reinterpret_cast<uint32 *>(buffer.data() + lastItemOffset);
+    uint32 numFixups = *fixupsBegin++;
+    FByteswapper(numFixups);
 
-      *f &= 0xfffffff;
-      auto ptr = reinterpret_cast<es::PointerX86<uint32> *>(&buffer[0] + *f);
+    for (uint32 i = 0; i < numFixups; i++) {
+      auto &f = fixupsBegin[i];
+      FByteswapper(f);
+
+      f &= 0xfffffff;
+      auto ptr = reinterpret_cast<es::PointerX86<uint32> *>(&buffer[0] + f);
       FByteswapper(*ptr);
       ptr->Fixup(buffer.data());
     }
