@@ -11,7 +11,9 @@ Head to this **[Wiki](https://github.com/PredatorCZ/Spike/wiki/Spike)** for more
 <li><a href="#Extract-Effect">Extract Effect</a></li>
 <li><a href="#Extract-PSARC">Extract PSARC</a></li>
 <li><a href="#Extract-sound">Extract sound</a></li>
+<li><a href="#Extract-texture-banks">Extract texture banks</a></li>
 <li><a href="#Levelmain-to-GLTF">Levelmain to GLTF</a></li>
+<li><a href="#Localization-to-JSON">Localization to JSON</a></li>
 <li><a href="#Region-to-GLTF">Region to GLTF</a></li>
 </ul>
 
@@ -21,6 +23,9 @@ Head to this **[Wiki](https://github.com/PredatorCZ/Spike/wiki/Spike)** for more
 
 Extracts packed assets, converts textures.
 In addition, converts mobys and ties into GLTF format.
+> [!IMPORTANT]
+> Moby animations don't have scale tracks for now, because they use aligned inheritance, that GLTF doesn't support.
+> Some moby animations for large objects might have biased tranlations, cause is uknown.
 
 ### Input file patterns: `^assetlookup.dat$`
 
@@ -64,6 +69,14 @@ Extracts sound files and converts them into WAV format.
 
 ### Input file patterns: `^ps3sound.dat$`, `^ps3dialogue.*.dat$`, `^resident_dialogue.*.dat$`, `^resident_sound.dat$`
 
+## Extract texture banks
+
+### Module command: extract_textures
+
+Extracts textures from tp/tph texture banks.
+
+### Input file patterns: `.tph$`
+
 ## Levelmain to GLTF
 
 ### Module command: levelmain_to_gltf
@@ -80,7 +93,28 @@ Currently there are some missing features:
 Textures are embedded in the GLTF file and converted to be up to GLTF standard.
 Textures, that were unable to be linked to GLTFs are normally extracted, however unconverted (normal and template maps)
 
+> [!IMPORTANT]
+> Moby animations don't have scale tracks for now, because they use aligned inheritance, that GLTF doesn't support.
+> Some moby animations for large objects might have biased tranlations, cause is uknown.
+
 ### Input file patterns: `^ps3levelmain.dat$`
+
+## Localization to JSON
+
+### Module command: loc_to_json
+
+Converts localization package from Resistance: Fall of Man to JSON.
+
+### Input file patterns: `.pkg$`
+
+### Settings
+
+- **fonts-folder**
+
+  **CLI Long:** ***--fonts-folder***\
+  **CLI Short:** ***-f***
+
+  Path to folder with fonts.dat file
 
 ## Region to GLTF
 

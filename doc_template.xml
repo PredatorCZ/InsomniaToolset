@@ -13,7 +13,10 @@ Head to this **[Wiki](https://github.com/PredatorCZ/Spike/wiki/Spike)** for more
 <extract_sound name="Extract sound">Extracts sound files and converts them into WAV format.</extract_sound>
 
 <extract_assets name="Extract Assets">Extracts packed assets, converts textures.
-In addition, converts mobys and ties into GLTF format.</extract_assets>
+In addition, converts mobys and ties into GLTF format.
+> [!IMPORTANT]
+> Moby animations don't have scale tracks for now, because they use aligned inheritance, that GLTF doesn't support.
+> Some moby animations for large objects might have biased tranlations, cause is uknown.</extract_assets>
 
 <extract_effect name="Extract Effect">Extracts and converts textures from `vfx_system_header.dat`.</extract_effect>
 
@@ -29,7 +32,15 @@ Currently there are some missing features:
 - Skybox
 
 Textures are embedded in the GLTF file and converted to be up to GLTF standard.
-Textures, that were unable to be linked to GLTFs are normally extracted, however unconverted (normal and template maps)</levelmain_to_gltf>
+Textures, that were unable to be linked to GLTFs are normally extracted, however unconverted (normal and template maps)
+
+> [!IMPORTANT]
+> Moby animations don't have scale tracks for now, because they use aligned inheritance, that GLTF doesn't support.
+> Some moby animations for large objects might have biased tranlations, cause is uknown.</levelmain_to_gltf>
+
+<loc_to_json name="Localization to JSON">Converts localization package from Resistance: Fall of Man to JSON.</loc_to_json>
+
+<extract_textures name="Extract texture banks">Extracts textures from tp/tph texture banks.</extract_textures>
 
 <toolset_footer>## [Latest Release](https://github.com/PredatorCZ/InsomniaToolset/releases)
 
