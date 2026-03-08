@@ -17,8 +17,8 @@ struct GLTFAni : GLTFModel {
     return Stream(aniStream);
   }
 
-  uint32 timesAccId;
-  uint16 maxFrames = 0;
+  std::map<float, uint32> timesAccId;
+  std::map<float, uint16> maxFrames;
   int32 staticTimes = -1;
 
 private:

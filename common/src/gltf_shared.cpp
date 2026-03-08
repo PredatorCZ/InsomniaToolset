@@ -197,12 +197,12 @@ void LoadAnimation(GLTFAni &glMain, const Animation &a,
     }
   }
 
-  uint32 curTimesAccId = glMain.timesAccId;
+  uint32 curTimesAccId = glMain.timesAccId[a.frameRate];
 
-  if (a.numFrames != glMain.maxFrames) {
+  if (a.numFrames != glMain.maxFrames[a.frameRate]) {
     curTimesAccId = glMain.accessors.size();
-    auto &nacc =
-        glMain.accessors.emplace_back(glMain.accessors.at(glMain.timesAccId));
+    auto &nacc = glMain.accessors.emplace_back(
+        glMain.accessors.at(glMain.timesAccId[a.frameRate]));
     nacc.count = a.numFrames;
     nacc.max.back() = a.numFrames > 0 ? (1.f / 30) * (a.numFrames - 1) : 0;
   }
@@ -281,8 +281,8 @@ void LoadAnimation(GLTFAni &glMain, const Animation &a,
 
     if (glMain.staticTimes < 0) {
       glMain.staticTimes = glMain.accessors.size();
-      auto &nacc =
-          glMain.accessors.emplace_back(glMain.accessors.at(glMain.timesAccId));
+      auto &nacc = glMain.accessors.emplace_back(
+          glMain.accessors.at(glMain.timesAccId[a.frameRate]));
       nacc.count = 1;
       nacc.max.back() = 0;
     }
@@ -318,8 +318,8 @@ void LoadAnimation(GLTFAni &glMain, const Animation &a,
     if (glMain.staticTimes < 0) {
       glMain.staticTimes = glMain.accessors.size();
 
-      auto &nacc =
-          glMain.accessors.emplace_back(glMain.accessors.at(glMain.timesAccId));
+      auto &nacc = glMain.accessors.emplace_back(
+          glMain.accessors.at(glMain.timesAccId[a.frameRate]));
       nacc.count = 1;
       nacc.max.back() = 0;
     }
@@ -396,27 +396,31 @@ void SwapAnimBuffer(Animation &item) {
 void MakeFrames(GLTFAni &glMain) {
   auto &str = glMain.AnimStream();
 
-  auto [timesAcc, timesAccId] = glMain.NewAccessor(str, 4);
-  timesAcc.type = gltf::Accessor::Type::Scalar;
-  timesAcc.componentType = gltf::Accessor::ComponentType::Float;
-  timesAcc.count = glMain.maxFrames;
-  timesAcc.min.emplace_back(0);
-  glMain.timesAccId = timesAccId;
+  for (auto [frameRate, maxFrames] : glMain.maxFrames) {
+    auto [timesAcc, timesAccId] = glMain.NewAccessor(str, 4);
+    timesAcc.type = gltf::Accessor::Type::Scalar;
+    timesAcc.componentType = gltf::Accessor::ComponentType::Float;
+    timesAcc.count = maxFrames;
+    timesAcc.min.emplace_back(0);
+    glMain.timesAccId[frameRate] = timesAccId;
 
-  if (glMain.maxFrames < 2) {
-    str.wr.Write<float>(0);
-    timesAcc.max.emplace_back(0);
-  } else {
-    auto times = gltfutils::MakeSamples(30, (glMain.maxFrames - 1) / 30.f);
-    str.wr.WriteContainer(times);
-    timesAcc.max.emplace_back(times.back());
+    if (maxFrames < 2) {
+      str.wr.Write<float>(0);
+      timesAcc.max.emplace_back(0);
+    } else {
+      auto times =
+          gltfutils::MakeSamples(frameRate, (maxFrames - 1) / frameRate);
+      str.wr.WriteContainer(times);
+      timesAcc.max.emplace_back(times.back());
+    }
   }
 }
 
 void LoadAnimations(GLTFAni &glMain, const es::PointerX86<Animation> *anims,
                     const uint32 numAnimations, const Skeleton *skel) {
   for (uint32 i = 0; i < numAnimations; i++) {
-    glMain.maxFrames = std::max(anims[i]->numFrames, glMain.maxFrames);
+    glMain.maxFrames[anims[i]->frameRate] =
+        std::max(anims[i]->numFrames, glMain.maxFrames[anims[i]->frameRate]);
   }
 
   MakeFrames(glMain);
@@ -462,7 +466,8 @@ void LoadAnimations(GLTFAni &glMain, const es::PointerX86<Animation> *anims,
 void LoadAnimations(GLTFAni &glMain, IGHWTOCIteratorConst<Animation> animations,
                     const int translationShift) {
   for (auto &a : animations) {
-    glMain.maxFrames = std::max(a.numFrames, glMain.maxFrames);
+    glMain.maxFrames[a.frameRate] =
+        std::max(a.numFrames, glMain.maxFrames[a.frameRate]);
   }
 
   MakeFrames(glMain);
