@@ -23,6 +23,7 @@ add_spike_subdir(extract)
 add_spike_subdir(effect)
 add_spike_subdir(levelmain)
 add_spike_subdir(sound)
+add_spike_subdir(texture)
 add_spike_subdir(localization)
 
 set(TPD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/fragmented/3rd_party)

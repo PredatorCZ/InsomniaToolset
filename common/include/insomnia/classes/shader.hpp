@@ -137,6 +137,11 @@ struct Texture : CoreClass {
   uint32 borderColor;
 };
 
+struct TextureData : CoreClass {
+  static constexpr uint32 ID = 0x5400;
+  char data;
+};
+
 struct LightmapTexture : Texture {
   static constexpr uint32 ID = 0x5400;
 };
