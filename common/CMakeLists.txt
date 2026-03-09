@@ -7,7 +7,7 @@ set(CORE_SOURCE_FILES src/serialize.cpp;src/reflected.cpp)
 
 if(GLTF)
   target_link_libraries(insomnia-interface INTERFACE gltf-interface)
-  list(APPEND CORE_SOURCE_FILES src/gltf_shared.cpp)
+  list(APPEND CORE_SOURCE_FILES src/gltf_shared.cpp;src/animation_machine.cpp)
 endif()
 
 if(NOT NO_OBJECTS)

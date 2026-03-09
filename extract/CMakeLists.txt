@@ -11,7 +11,7 @@ build_target(
   2
   SOURCES
   extract_v2.cpp
-  gltf.cpp
+  extract_gltf.cpp
   LINKS
   gltf-interface
   insomnia-interface
@@ -33,7 +33,7 @@ build_target(
   1
   SOURCES
   region_to_gltf.cpp
-  gltf.cpp
+  extract_gltf.cpp
   LINKS
   gltf-interface
   insomnia-interface

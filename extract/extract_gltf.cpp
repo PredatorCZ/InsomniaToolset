@@ -4,6 +4,68 @@
 #include "spike/app_context.hpp"
 #include "spike/io/binreader_stream.hpp"
 
+void GenerateSkeleton(GLTF &main, const Skeleton *skeleton) {
+  for (uint32 i = 0; i < skeleton->numBones; i++) {
+    gltf::Node &glNode = main.nodes.emplace_back();
+    glNode.name = std::to_string(i);
+    es::Matrix44 tm(skeleton->tms0[i]);
+
+    if (int16 parentIndex = skeleton->bones[i].parentIndex; parentIndex < 0) {
+      main.scenes.front().nodes.emplace_back(i);
+    } else {
+      main.nodes.at(parentIndex).children.emplace_back(i);
+      es::Matrix44 ptm(skeleton->tms1[parentIndex]);
+      tm = ptm * tm;
+    }
+
+    tm.r4() *= YARD_TO_M;
+    tm.r1().w = 0;
+    tm.r2().w = 0;
+    tm.r3().w = 0;
+    tm.r4().w = 1;
+
+    Vector4A16 rotation, translation, scale;
+    tm.Decompose(translation, rotation, scale);
+    memcpy(glNode.rotation.data(), &rotation, 16);
+    memcpy(glNode.translation.data(), &translation, 12);
+    memcpy(glNode.scale.data(), &scale, 12);
+  }
+
+  for (int32 i = 0; i < skeleton->numBones; i++) {
+    auto *glNode = &main.nodes.at(i);
+
+    if (glNode->children.empty()) {
+      continue;
+    }
+
+    auto oldChildren = std::move(glNode->children);
+    for (auto &n : main.nodes) {
+      for (auto &c : n.children) {
+        if (c == i) {
+          c = main.nodes.size();
+          break;
+        }
+      }
+    }
+
+    for (auto &n : main.scenes.front().nodes) {
+      if (n == uint32(i)) {
+        n = main.nodes.size();
+      }
+    }
+
+    auto &sNode = main.nodes.emplace_back();
+    glNode = &main.nodes.at(i);
+    sNode = *glNode;
+    sNode.children = std::move(oldChildren);
+    sNode.children.emplace_back(i);
+    *glNode = {};
+    glNode->name = sNode.name + "_s";
+    glNode->scale = sNode.scale;
+    sNode.scale = gltf::defaults::IdentityVec3;
+  }
+}
+
 void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
                 AppContext *ctx, AppContextStream &shdStream,
                 IGHWTOCIteratorConst<ResourceAnimsets> &anims) {
@@ -46,38 +108,14 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
   const MobyV2 *moby = mobys.begin();
   const Skeleton *skeleton = moby->skeleton;
   assert((skeleton->translationShift & 0xf0) == 0);
-
-  for (uint32 i = 0; i < skeleton->numBones; i++) {
-    gltf::Node &glNode = main.nodes.emplace_back();
-    glNode.name = std::to_string(i);
-    es::Matrix44 tm(skeleton->tms0[i]);
-
-    if (int16 parentIndex = skeleton->bones[i].parentIndex; parentIndex < 0) {
-      main.scenes.front().nodes.emplace_back(i);
-    } else {
-      main.nodes.at(parentIndex).children.emplace_back(i);
-      es::Matrix44 ptm(skeleton->tms1[parentIndex]);
-      tm = ptm * tm;
-    }
-
-    tm.r1().w = 0;
-    tm.r2().w = 0;
-    tm.r3().w = 0;
-    tm.r4().w = 1;
-
-    Vector4A16 rotation, translation, scale;
-    tm.Decompose(translation, rotation, scale);
-    memcpy(glNode.rotation.data(), &rotation, 16);
-    memcpy(glNode.translation.data(), &translation, 12);
-    memcpy(glNode.scale.data(), &scale, 12);
-  }
+  GenerateSkeleton(main, skeleton);
 
   const uint16 *indexBuffer = &indexBuffers.begin()->data;
   const char *vertexBuffer = &vertexBuffers.begin()->data;
   std::map<uint16, uint16> joints;
 
-  for (uint32 i = 0; i < moby->numMeshes; i++) {
-    const MeshV2 &mesh = moby->meshes[i];
+  for (uint32 i = 0; i < moby->numSegments; i++) {
+    const MobySegment &mesh = moby->segments[i];
     for (uint32 p = 0; p < mesh.numPrimitives; p++) {
       const PrimitiveV2 &prim = mesh.primitives[p];
 
@@ -108,6 +146,7 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
     for (auto &[jid, idx] : joints) {
       skn.joints[idx] = jid;
       es::Matrix44 ibm = skeleton->tms1[jid];
+      ibm.r4() *= YARD_TO_M;
       ibm.r1().w = 0;
       ibm.r2().w = 0;
       ibm.r3().w = 0;
@@ -178,10 +217,10 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
     bool IsNormalized() const override { return false; }
 
     Vector4A16 mul;
-  } attributeMul{moby->meshScale};
+  } attributeMul{moby->meshScale * YARD_TO_M};
 
-  for (uint32 i = 0; i < moby->numMeshes; i++) {
-    const MeshV2 &mesh = moby->meshes[i];
+  for (uint32 i = 0; i < moby->numSegments; i++) {
+    const MobySegment &mesh = moby->segments[i];
     if (mesh.primitives == 0) {
       continue;
     }
@@ -293,12 +332,12 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
     }
   }
 
-  auto foundAnimset = std::find(anims.begin(), anims.end(), moby->animset);
+  auto foundAnimset = std::find(anims.begin(), anims.end(), moby->animsetHash);
 
   if (foundAnimset != anims.end()) {
-    auto tieStream = ctx->RequestFile(
+    auto animsetStream = ctx->RequestFile(
         std::string(ctx->workingFile.GetFolder()) + "animsets.dat");
-    BinReaderRef_e subRd(*tieStream.Get());
+    BinReaderRef_e subRd(*animsetStream.Get());
 
     subRd.SetRelativeOrigin(foundAnimset->offset);
     IGHW animData;
@@ -306,7 +345,7 @@ void MobyToGltf(IGHWTOCIteratorConst<ResourceShaders> &shaders, IGHW &ighw,
     IGHWTOCIteratorConst<Animation> animations;
 
     CatchClasses(animData, animations);
-    LoadAnimations(main, animations, skeleton->translationShift);
+    LoadAnimations(main, animations, skeleton);
   }
 
   main.FinishAndSave(ctx->NewFile(mobyPath.ChangeExtension2("glb")).str, "");

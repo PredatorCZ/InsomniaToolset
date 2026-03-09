@@ -370,9 +370,7 @@ struct AttributeMul : AttributeCodec {
   Vector4A16 mul;
 };
 
-void MobyToGltf(const MobyV1 &moby, IMGLTF &main, BinReaderRef_e stream,
-                std::map<uint16, uint16> &materialRemaps, int32 rootNode = -1) {
-  const Skeleton *skeleton = moby.skeleton;
+void GenerateSkeleton(GLTF &main, const Skeleton *skeleton) {
   size_t startNode = main.nodes.size();
 
   for (uint32 i = 0; i < skeleton->numBones; i++) {
@@ -382,11 +380,7 @@ void MobyToGltf(const MobyV1 &moby, IMGLTF &main, BinReaderRef_e stream,
 
     if (int16 parentIndex = skeleton->bones[i].parentIndex;
         parentIndex == int16(i)) {
-      if (rootNode < 0) {
-        main.scenes.front().nodes.emplace_back(startNode + i);
-      } else {
-        main.nodes.at(rootNode).children.emplace_back(startNode + i);
-      }
+      main.scenes.front().nodes.emplace_back(startNode + i);
     } else {
       main.nodes.at(startNode + parentIndex)
           .children.emplace_back(startNode + i);
@@ -406,6 +400,46 @@ void MobyToGltf(const MobyV1 &moby, IMGLTF &main, BinReaderRef_e stream,
     memcpy(glNode.translation.data(), &translation, 12);
     memcpy(glNode.scale.data(), &scale, 12);
   }
+
+  for (int32 i = 0; i < skeleton->numBones; i++) {
+    auto *glNode = &main.nodes.at(i);
+
+    if (glNode->children.empty()) {
+      continue;
+    }
+
+    auto oldChildren = std::move(glNode->children);
+    for (auto &n : main.nodes) {
+      for (auto &c : n.children) {
+        if (c == i) {
+          c = main.nodes.size();
+          break;
+        }
+      }
+    }
+
+    for (auto &n : main.scenes.front().nodes) {
+      if (n == uint32(i)) {
+        n = main.nodes.size();
+      }
+    }
+
+    auto &sNode = main.nodes.emplace_back();
+    glNode = &main.nodes.at(i);
+    sNode = *glNode;
+    sNode.children = std::move(oldChildren);
+    sNode.children.emplace_back(i);
+    *glNode = {};
+    glNode->name = sNode.name + "_s";
+    glNode->scale = sNode.scale;
+    sNode.scale = gltf::defaults::IdentityVec3;
+  }
+}
+
+void MobyToGltf(const MobyV1 &moby, IMGLTF &main, BinReaderRef_e stream,
+                std::map<uint16, uint16> &materialRemaps, int32 rootNode = -1) {
+  size_t startNode = main.nodes.size();
+  GenerateSkeleton(main, moby.skeleton);
 
   std::map<uint16, uint16> joints;
   const uint32 numMeshes = moby.numMeshes * (moby.anotherSet + 1);
@@ -441,7 +475,7 @@ void MobyToGltf(const MobyV1 &moby, IMGLTF &main, BinReaderRef_e stream,
 
     for (auto &[jid, idx] : joints) {
       skn.joints[idx] = startNode + jid;
-      es::Matrix44 ibm = skeleton->tms1[jid];
+      es::Matrix44 ibm = moby.skeleton->tms1[jid];
       ibm.r4() *= YARD_TO_M;
       ibm.r1().w = 0;
       ibm.r2().w = 0;
@@ -614,7 +648,8 @@ void MobyToGltf(const MobyV1 &moby, IMGLTF &main, BinReaderRef_e stream,
   }
 
   if (moby.numAnimations > 0) {
-    LoadAnimations(main, moby.animations.Get(), moby.numAnimations, skeleton);
+    LoadAnimations(main, moby.animations.Get(), moby.numAnimations,
+                   moby.skeleton);
   }
 }
 

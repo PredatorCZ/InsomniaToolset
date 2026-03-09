@@ -24,7 +24,6 @@ Head to this **[Wiki](https://github.com/PredatorCZ/Spike/wiki/Spike)** for more
 Extracts packed assets, converts textures.
 In addition, converts mobys and ties into GLTF format.
 > [!IMPORTANT]
-> Moby animations don't have scale tracks for now, because they use aligned inheritance, that GLTF doesn't support.
 > Some moby animations for large objects might have biased tranlations, cause is uknown.
 
 ### Input file patterns: `^assetlookup.dat$`
@@ -94,7 +93,6 @@ Textures are embedded in the GLTF file and converted to be up to GLTF standard.
 Textures, that were unable to be linked to GLTFs are normally extracted, however unconverted (normal and template maps)
 
 > [!IMPORTANT]
-> Moby animations don't have scale tracks for now, because they use aligned inheritance, that GLTF doesn't support.
 > Some moby animations for large objects might have biased tranlations, cause is uknown.
 
 ### Input file patterns: `^ps3levelmain.dat$`
