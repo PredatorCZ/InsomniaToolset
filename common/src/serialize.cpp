@@ -222,38 +222,46 @@ template <> void FByteswapper(PrimitiveV1 &input, bool) {
   FByteswapper(input.unk);
 }
 
-template <> void FByteswapper(MeshV2 &input, bool) {
+template <> void FByteswapper(MobySegment &input, bool) {
   FByteswapper(input.numPrimitives);
 }
 
 template <> void FByteswapper(MobyV2 &input, bool) {
-  FByteswapper(input.unk00);
-  FByteswapper(input.unk01);
-  FByteswapper(input.numMeshes);
-  FByteswapper(input.unk11);
+  FByteswapper(input.boundingSphere);
+  FByteswapper(input.bindPoseInverseOffset);
+  FByteswapper(input.flags);
+  FByteswapper(input.runtimeEnum);
+  FByteswapper(input.numFrags);
+  FByteswapper(input.numSegments);
+  FByteswapper(input.numShaderSets);
   FByteswapper(input.numBones);
-  FByteswapper(input.unk13);
-  FByteswapper(input.null00);
-  FByteswapper(input.unk011);
-  FByteswapper(input.unk02);
-  FByteswapper(input.unk032);
-  FByteswapper(input.animset);
-  FByteswapper(input.null02);
-  FByteswapper(input.unk031);
+  FByteswapper(input.numRenderBoundingSpheres);
+  FByteswapper(input.heapHandles);
+  FByteswapper(input.indexData);
+  FByteswapper(input.vertexData);
+  FByteswapper(input.defaultUpdateEnum);
+  FByteswapper(input.defaultDrawList);
+  FByteswapper(input.defaultUpdateList);
+  FByteswapper(input.numClipData);
+  FByteswapper(input.animQueryHandle);
+  FByteswapper(input.animsetHash);
   FByteswapper(input.meshScale);
-  FByteswapper(input.unk04);
-  FByteswapper(input.unk05);
-  FByteswapper(input.unk06);
+  FByteswapper(input.texureStreamDistance);
+  FByteswapper(input.shadowMergeGroups);
+  FByteswapper(input.shadowAABBExtend);
+  FByteswapper(input.numBangles);
+  FByteswapper(input.defaultDraw);
+  FByteswapper(input.numPhaseJointGroups);
   FByteswapper(input.moby);
-  FByteswapper(input.unk07);
-  FByteswapper(input.null01);
+  FByteswapper(input.bangleCheapChunk);
+  FByteswapper(input.looseAttDataSize);
 
   if (input.skeleton) {
     FByteswapper(*input.skeleton);
   }
 
-  for (uint32 i = 0; i < input.numMeshes; i++) {
-    FByteswapper(input.meshes[i]);
+  for (uint32 i = 0; i < input.numSegments; i++) {
+    FByteswapper(input.segments[i]);
   }
 }
 

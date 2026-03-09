@@ -480,7 +480,7 @@ void ExtractAnimSets(AppContext *ctx, IGHWTOCIteratorConst<ResourceMobys> mobys,
       IGHWTOCIteratorConst<MobyV2> model;
 
       CatchClasses(item, model);
-      const Hash animHash = model.at(0).animset;
+      const Hash animHash = model.at(0).animsetHash;
       if (animHash != Hash{}) {
         registry[animHash].emplace_back(model.at(0).selfPath);
       }

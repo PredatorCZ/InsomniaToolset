@@ -41,7 +41,7 @@ struct PrimitiveV2 : CoreClass {
   uint32 unk3;
 };
 
-struct MeshV2 : CoreClass {
+struct MobySegment : CoreClass {
   static constexpr uint32 ID = 0xd700;
 
   es::PointerX86<PrimitiveV2> primitives;
@@ -49,9 +49,7 @@ struct MeshV2 : CoreClass {
 };
 
 struct Bone {
-  enum {
-    FLAG_DONT_INHERIT_SCALE = 1
-  };
+  enum { FLAG_DONT_INHERIT_SCALE = 1 };
   uint16 flags;
   int16 parentIndex;
   uint16 child;
@@ -75,37 +73,61 @@ struct Skeleton : CoreClass {
 struct MobyV2 : CoreClass {
   static constexpr uint32 ID = 0xd100;
 
-  float unk00[4];
-  uint32 unk01[2];
-  uint16 numMeshes;
-  uint16 unk11;
+  Vector4 boundingSphere;
+  int16 bindPoseInverseOffset;
+  uint16 flags;
+  int16 runtimeEnum;
+  uint16 numFrags;
+  uint16 numSegments;
+  uint16 numShaderSets;
   uint16 numBones;
-  uint16 unk13;
-  uint32 null00;
-  es::PointerX86<MeshV2> meshes;
+  uint16 numRenderBoundingSpheres;
+  uint32 heapHandles;
+  es::PointerX86<MobySegment> segments;
   es::PointerX86<Skeleton> skeleton;
-  es::PointerX86<char> unkData0;
-  es::PointerX86<char> meshTransform;
-  uint32 unk011[4];
-  float unk02[2];
-  uint32 unk032;
-  Hash animset;
-  uint32 null02[4];
-  es::PointerX86<char> unkData1;
-  uint32 unk031;
+  es::PointerX86<char> renderBoundingSpheres;
+  es::PointerX86<char> collPrimitiveProto; // COLL::Object
+  es::PointerX86<char> collTriMeshProto;   // COLL::Object
+  uint32 indexData;
+  uint32 vertexData;
+  int32 defaultUpdateEnum;
+  float defaultDrawList;
+  float defaultUpdateList;
+  uint16 numClipData;
+  uint16 animQueryHandle;
+  Hash animsetHash;
+  es::PointerX86<char> animSet;
+  es::PointerX86<char> animGameplaySettings;
+  es::PointerX86<char> clipData;
+  es::PointerX86<char> dynamicJoints;
+  es::PointerX86<char> segmentColliionPrimitiveInfo;
+  es::PointerX86<char> looseAttSystemInfo;
   float meshScale;
-  uint32 unk04[2];
-  float unk05[2];
-  es::PointerX86<char> unkData2;
-  es::PointerX86<char> unkData3;
-  uint32 unk06[9];
+  float texureStreamDistance;
+  uint16 shadowMergeGroups;
+  float shadowAABBExtend;
+  es::PointerX86<char> physics;
+  es::PointerX86<char> physicsInfo;
+  es::PointerX86<char> physicsDat;
+  es::PointerX86<char> bangleJointInfo;
+  uint32 numBangles;
+  es::PointerX86<uint8> bangleSegmentIds;
+  uint64 defaultDraw;
+  uint32 numPhaseJointGroups;
+  es::PointerX86<uint16> numPhaseJointIndicesPerGroup;
+  es::PointerX86<es::PointerX86<uint16>> phaseJointIndices;
+  es::PointerX86<uint8> particleDefinition;
   Hash moby;
   es::PointerX86<char> selfPath;
-  es::PointerX86<char> unkData4;
-  uint32 unk07[2];
-  es::PointerX86<char> unkData5;
-  es::PointerX86<char> unkData6;
-  uint32 null01[12];
+  es::PointerX86<char> bangleGeomSimDat;
+  uint64 bangleCheapChunk;
+  es::PointerX86<char> navEffDat;
+  es::PointerX86<char> navClueDat;
+  es::PointerX86<char> morphInfo;
+  uint32 looseAttDataSize;
+  es::PointerX86<char> interactData;
+  es::PointerX86<char> destruction;
+  uint32 padding[8];
 };
 
 struct PrimitiveV1 : CoreClass {
