@@ -109,8 +109,8 @@ void LangToStr(nlohmann::json &node, Language lang) {
   case Language::en:
     node = "en";
     break;
-  case Language::en_us:
-    node = "en_us";
+  case Language::en_uk:
+    node = "en_uk";
     break;
   case Language::fr:
     node = "fr";
@@ -187,7 +187,17 @@ void AppProcessFile(AppContext *ctx) {
     }
 
     auto &entry = tags[std::to_string(t.tag)];
-    entry = CVT.to_bytes(indices);
+
+    if (hdr->type == LocalizationType::Dialogue) {
+       entry["text"] = CVT.to_bytes(indices);
+       const char *tagLoc = data + strlen(data) + 1;
+       tagLoc += GetPadding(reinterpret_cast<uintptr>(tagLoc), 4);
+       uint32 soundTag = *reinterpret_cast<const uint32*>(tagLoc);
+       FByteswapper(soundTag);
+       entry["soundTag"] = soundTag;
+    } else {
+      entry = CVT.to_bytes(indices);
+    }
     // entry["text"] = CVT.to_bytes(indices);
     // entry["fontIndex"] = font;
   }

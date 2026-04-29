@@ -874,6 +874,22 @@ template <> void FByteswapper(Localization &item, bool) {
   }
 }
 
+template <> void FByteswapper(LocalizationV2 &item, bool) {
+  FByteswapper(item.type);
+  FByteswapper(item.numDebugTags);
+  FByteswapper(item.numTags);
+  FByteswapper(item.language);
+
+  for (auto &t : item.Tags()) {
+    FByteswapper(t.tag);
+    FByteswapper(t.unk);
+  }
+
+  for (auto &t : item.DebugTags()) {
+    FByteswapper(t);
+  }
+}
+
 template <> void FByteswapper(FontCharacter &item, bool) {
   FByteswapper(item.textureIndex);
   FByteswapper(item.unk);
@@ -969,7 +985,7 @@ static const std::vector<ClassInfo> FIXUPS[]{
         PrimitiveV2, TieV2, TiePrimitiveV2, RegionMeshV2, Animation,
         TieInstanceV2, UnkInstanceV2, ZoneTieLookup, ZoneShaderLookup, ShrubV2,
         ZoneShrubLookup, ShrubV2Instance, FoliageV2Instance, FoliageV2Unk1,
-        FoliageV2, ZoneFoliageLookup, SoundsV2, SoundBank>(),
+        FoliageV2, ZoneFoliageLookup, SoundsV2, SoundBank, LocalizationV2>(),
     RegisterClasses<
         ResourceLighting, ResourceZones, ResourceAnimsets, ResourceMobys,
         ResourceShrubs, ResourceTies, ResourceFoliages, ResourceCubemap,
