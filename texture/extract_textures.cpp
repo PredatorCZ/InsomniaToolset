@@ -48,6 +48,7 @@ void ExtractTexture(AppContext *ctx, const TextureV1 &tex, const char *data,
       tile = TexelTile::Morton;
       return TexelInputFormatType::R8;
     case T::BC1:
+    case T::BC1_LN:
       return TexelInputFormatType::BC1;
     case T::BC3:
       return TexelInputFormatType::BC3;

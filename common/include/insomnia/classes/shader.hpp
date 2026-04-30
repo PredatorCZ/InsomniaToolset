@@ -118,7 +118,8 @@ enum class TextureFormat : uint8 {
   BC1,
   BC2,
   BC3,
-  RG8 = 0x8B
+  RG8 = 0x8B,
+  BC1_LN = 0xA6,
 };
 
 // NV4097_SET_*TEXTURE_* registry dump
