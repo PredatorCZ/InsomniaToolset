@@ -38,6 +38,10 @@ Textures, that were unable to be linked to GLTFs are normally extracted, however
 
 <loc_to_json name="Localization to JSON">Converts localization package from Resistance: Fall of Man to JSON.</loc_to_json>
 
+<json_to_loc name="JSON to Localization">Converts JSON to localization package for Resistance: Fall of Man.</json_to_loc>
+
+<locv2_to_json name="Localization V2 to JSON">Converts localization package from Resistance 2 or later titles to JSON.</locv2_to_json>
+
 <extract_textures name="Extract texture banks">Extracts textures from tp/tph texture banks.</extract_textures>
 
 <toolset_footer>## [Latest Release](https://github.com/PredatorCZ/InsomniaToolset/releases)

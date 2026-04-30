@@ -12,8 +12,10 @@ Head to this **[Wiki](https://github.com/PredatorCZ/Spike/wiki/Spike)** for more
 <li><a href="#Extract-PSARC">Extract PSARC</a></li>
 <li><a href="#Extract-sound">Extract sound</a></li>
 <li><a href="#Extract-texture-banks">Extract texture banks</a></li>
+<li><a href="#JSON-to-Localization">JSON to Localization</a></li>
 <li><a href="#Levelmain-to-GLTF">Levelmain to GLTF</a></li>
 <li><a href="#Localization-to-JSON">Localization to JSON</a></li>
+<li><a href="#Localization-V2-to-JSON">Localization V2 to JSON</a></li>
 <li><a href="#Region-to-GLTF">Region to GLTF</a></li>
 </ul>
 
@@ -76,6 +78,23 @@ Extracts textures from tp/tph texture banks.
 
 ### Input file patterns: `.tph$`
 
+## JSON to Localization
+
+### Module command: json_to_loc
+
+Converts JSON to localization package for Resistance: Fall of Man.
+
+### Input file patterns: `.json$`
+
+### Settings
+
+- **fonts-folder**
+
+  **CLI Long:** ***--fonts-folder***\
+  **CLI Short:** ***-f***
+
+  Path to folder with fonts.dat file
+
 ## Levelmain to GLTF
 
 ### Module command: levelmain_to_gltf
@@ -113,6 +132,14 @@ Converts localization package from Resistance: Fall of Man to JSON.
   **CLI Short:** ***-f***
 
   Path to folder with fonts.dat file
+
+## Localization V2 to JSON
+
+### Module command: locv2_to_json
+
+Converts localization package from Resistance 2 or later titles to JSON.
+
+### Input file patterns: `.pkg$`
 
 ## Region to GLTF
 
