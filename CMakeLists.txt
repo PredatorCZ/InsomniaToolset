@@ -26,6 +26,10 @@ add_spike_subdir(sound)
 add_spike_subdir(texture)
 add_spike_subdir(localization)
 
+if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Release")
+    add_spike_subdir(wad)
+endif()
+
 set(TPD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/fragmented/3rd_party)
 add_spike_subdir(3rd_party/fragmented/psarc)
 
